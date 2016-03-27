@@ -5,25 +5,14 @@ import (
 	"strconv"
 )
 
-const (
-	ValueEmpty   = 1
-	ValueInt     = 2
-	ValueDouble  = 3
-	ValueBoolean = 4
-	ValueString  = 5
-	ValueDate    = 6
-	ValueBase64  = 7
-	ValueArray   = 8
-)
-
 type Value struct {
-	Int      *int32 //also i4
+	Int      *int32 //i4
 	Boolean  *bool
 	String   *string
 	Double   *float64
 	DateTime *string //dateTime.iso8601
 	Base64   *string
-	//Struct unsupported
+	//Struct - unsupported
 	Array []Value
 
 	//Extensions
@@ -31,7 +20,7 @@ type Value struct {
 	Byte  *byte    //i1, ex:i1
 	Float *float32 //float, ex:float
 	Long  *int64   //i8, ex:i8
-	//Dom unsupported
+	//Dom - unsupported
 	Short *int16 //i2, ex:i2
 }
 
