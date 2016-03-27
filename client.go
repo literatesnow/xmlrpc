@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/xml"
-	"strconv"
 )
 
 type Client struct {
@@ -30,7 +29,7 @@ func (cl *Client) CreateRequest(methodName string, values []Value) (document []b
 	return buf.Bytes()
 }
 
-func (cl *Client) Parse(response *bytes.Buffer) (values []Value) {
+func (cl *Client) ParseResponse(response *bytes.Buffer) (values []Value) {
 	decoder := xml.NewDecoder(response)
 	values = make([]Value, 0)
 
@@ -81,41 +80,23 @@ func (cl *Client) parseCharData(value *Value, str string) {
 		return
 	}
 
-	if value.Type == 0 {
-		value.Type = ValueString
-	}
-
-	if str == "" {
-		value.Type = ValueEmpty
-
-	} else {
-		switch value.Type {
-		case ValueInt:
-			value.Number, _ = strconv.ParseInt(str, 10, 64)
-		case ValueDouble:
-			value.Double, _ = strconv.ParseFloat(str, 64)
-		case ValueBoolean:
-			value.Boolean, _ = strconv.ParseBool(str)
-		case ValueString, ValueDate, ValueBase64:
-			value.String = str
-		}
-	}
+	value.FromString(str)
 }
 
 func (cl *Client) parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) {
 	if elemName == "value" {
-		*valuePtr = &Value{Type: 0}
+		*valuePtr = &Value{}
+		return
+	}
+
+	if *valuePtr == nil {
 		return
 	}
 
 	value := *valuePtr
-	value.setType(elemName)
+	value.FromRpc(elemName)
 
-	if value.Type == 0 {
-		return
-	}
-
-	if value.Type == ValueArray {
+	if value.Array != nil {
 		cl.parseValueArray(decoder, value)
 	}
 }
@@ -123,10 +104,6 @@ func (cl *Client) parseStartElement(decoder *xml.Decoder, valuePtr **Value, elem
 func (cl *Client) parseValueArray(decoder *xml.Decoder, value *Value) {
 	if !cl.nextElem(decoder, "data") {
 		return //TODO return error
-	}
-
-	if value.Array == nil {
-		value.Array = make([]Value, 0)
 	}
 
 	for {
