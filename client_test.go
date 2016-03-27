@@ -2,26 +2,27 @@ package xmlrpc
 
 import (
 	"bytes"
+	"encoding/xml"
 	"testing"
 )
 
 func TestIntegerParam(t *testing.T) {
-	doRequest(
+	parseRequest(
 		[]string{"<int>482384</int>"},
 		[]Value{{Type: ValueInt, Number: 482384}},
 		t)
 
-	doRequest(
+	parseRequest(
 		[]string{"<i4>-958372</i4>"},
 		[]Value{{Type: ValueInt, Number: -958372}},
 		t)
 
-	doRequest(
+	parseRequest(
 		[]string{"<i8>38482148485</i8>"},
 		[]Value{{Type: ValueInt, Number: 38482148485}},
 		t)
 
-	doRequest(
+	parseRequest(
 		[]string{
 			"<int>384424</int>",
 			"<i4>73849</i4>",
@@ -34,7 +35,7 @@ func TestIntegerParam(t *testing.T) {
 }
 
 func TestArrayParam(t *testing.T) {
-	doRequest(
+	parseRequest(
 		[]string{`<array><data>
               <value><int>59392</int></value>
               <value><i4>-49528</i4></value>
@@ -48,7 +49,7 @@ func TestArrayParam(t *testing.T) {
 }
 
 func TestMixedArrayParam(t *testing.T) {
-	doRequest(
+	parseRequest(
 		[]string{`<array><data>
               <value><int>485838</int></value>
               <value><i4>58388</i4></value>
@@ -65,7 +66,32 @@ func TestMixedArrayParam(t *testing.T) {
 		t)
 }
 
-func doRequest(params []string, expecteds []Value, t *testing.T) {
+func TestCreateRequest(t *testing.T) {
+	expected := xml.Header +
+		"<methodCall><methodName>calling</methodName></methodCall>"
+
+	createCompareRequest("calling", nil, expected, t)
+}
+
+func TestCreateRequestIntParam(t *testing.T) {
+	expected := xml.Header +
+		"<methodCall><methodName>hello</methodName>" +
+		"<params><param><value><int>100</int></value></param></params></methodCall>"
+
+	createCompareRequest("hello", []Value{{Type: ValueInt, Number: 100}}, expected, t)
+}
+
+func createCompareRequest(methodName string, values []Value, expected string, t *testing.T) {
+	cl := Client{}
+
+	actual := string(cl.CreateRequest(methodName, values))
+
+	if actual != expected {
+		t.Fatalf("Expected document: %s\ngot: %s\n", expected, actual)
+	}
+}
+
+func parseRequest(params []string, expecteds []Value, t *testing.T) {
 	prefix := "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?><methodResponse><params>"
 	suffix := "\n</params></methodResponse>"
 
@@ -78,8 +104,8 @@ func doRequest(params []string, expecteds []Value, t *testing.T) {
 	t.Logf("XML: %s", xml)
 
 	buf := bytes.NewBufferString(xml)
-	doc := NewClient()
-	actuals := doc.Parse(buf)
+	cl := Client{}
+	actuals := cl.Parse(buf)
 
 	if len(actuals) != len(expecteds) {
 		t.Fatalf("Expected count %v values, got %v", len(expecteds), len(actuals))

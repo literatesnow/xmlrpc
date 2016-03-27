@@ -1,36 +1,33 @@
 package xmlrpc
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/xml"
 	"strconv"
 )
 
 type Client struct {
-	doc bytes.Buffer
 }
 
-func NewClient() *Client {
-	cl := &Client{}
+func (cl *Client) CreateRequest(methodName string, values []Value) (document []byte) {
+	var buf bytes.Buffer
 
-	return cl
-}
+	writer := bufio.NewWriter(&buf)
+	writer.WriteString(xml.Header)
 
-func (cl *Client) Begin(methodName string) {
-	cl.doc.WriteString("<?xml version=\"1.0\"?><methodCall><methodName>")
-	cl.doc.WriteString(methodName)
-	cl.doc.WriteString("</methodName><params>")
-}
+	encoder := xml.NewEncoder(writer)
 
-func (cl *Client) End() (doc string) {
-	cl.doc.WriteString("</params></methodCall>")
-	return cl.doc.String()
-}
+	appendStart(encoder, "methodCall")
+	appendStart(encoder, "methodName")
+	appendCharData(encoder, methodName)
+	appendEnd(encoder, "methodName")
+	appendParams(encoder, values)
+	appendEnd(encoder, "methodCall")
 
-func (cl *Client) ParamString(value string) {
-	cl.doc.WriteString("<param><value><string>")
-	cl.doc.WriteString(value)
-	cl.doc.WriteString("</string></value></param>")
+	encoder.Flush()
+
+	return buf.Bytes()
 }
 
 func (cl *Client) Parse(response *bytes.Buffer) (values []Value) {
@@ -94,7 +91,7 @@ func (cl *Client) parseCharData(value *Value, str string) {
 	} else {
 		switch value.Type {
 		case ValueInt:
-			value.Number, _ = strconv.Atoi(str)
+			value.Number, _ = strconv.ParseInt(str, 10, 64)
 		case ValueDouble:
 			value.Double, _ = strconv.ParseFloat(str, 64)
 		case ValueBoolean:
@@ -157,4 +154,34 @@ func (cl *Client) nextElem(decoder *xml.Decoder, name string) (found bool) {
 	}
 
 	return false
+}
+
+func appendStart(encoder *xml.Encoder, name string) {
+	encoder.EncodeToken(xml.StartElement{Name: xml.Name{Local: name}})
+}
+
+func appendEnd(encoder *xml.Encoder, name string) {
+	encoder.EncodeToken(xml.EndElement{Name: xml.Name{Local: name}})
+}
+
+func appendCharData(encoder *xml.Encoder, str string) {
+	if str != "" {
+		encoder.EncodeToken(xml.CharData(str))
+	}
+}
+
+func appendParams(encoder *xml.Encoder, values []Value) {
+	if len(values) == 0 {
+		return
+	}
+
+	appendStart(encoder, "params")
+
+	for _, val := range values {
+		appendStart(encoder, "param")
+		val.appendXml(encoder)
+		appendEnd(encoder, "param")
+	}
+
+	appendEnd(encoder, "params")
 }
