@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"strconv"
 	"strings"
+
+	"bitbucket.org/unrulyknight/xmlrpc/util"
 )
 
 type Value struct {
@@ -13,53 +15,53 @@ type Value struct {
 	Double   *float64
 	DateTime *string //dateTime.iso8601
 	Base64   *string
+	Array    []Value
 	//Struct - unsupported
-	Array []Value
 
 	//Extensions
 	Nil   *bool    //nil, ex:nil
 	Byte  *byte    //i1, ex:i1
 	Float *float32 //float, ex:float
 	Long  *int64   //i8, ex:i8
+	Short *int16   //i2, ex:i2
 	//Dom - unsupported
-	Short *int16 //i2, ex:i2
 }
 
-func NewValueInt(val int32) Value {
+func NewInt(val int32) Value {
 	return Value{Int: &val}
 }
-func NewValueBoolean(val bool) Value {
+func NewBoolean(val bool) Value {
 	return Value{Boolean: &val}
 }
-func NewValueString(val string) Value {
+func NewString(val string) Value {
 	return Value{String: &val}
 }
-func NewValueDouble(val float64) Value {
+func NewDouble(val float64) Value {
 	return Value{Double: &val}
 }
-func NewValueDateTime(val string) Value {
+func NewDateTime(val string) Value {
 	return Value{DateTime: &val}
 }
-func NewValueBase64(val string) Value {
+func NewBase64(val string) Value {
 	return Value{Base64: &val}
 }
-func NewValueArray(val []Value) Value {
+func NewArray(val []Value) Value {
 	return Value{Array: val}
 }
-func NewValueNil() Value {
+func NewNil() Value {
 	b := true
 	return Value{Nil: &b}
 }
-func NewValueByte(val byte) Value {
+func NewByte(val byte) Value {
 	return Value{Byte: &val}
 }
-func NewValueFloat(val float32) Value {
+func NewFloat(val float32) Value {
 	return Value{Float: &val}
 }
-func NewValueLong(val int64) Value {
+func NewLong(val int64) Value {
 	return Value{Long: &val}
 }
-func NewValueShort(val int16) Value {
+func NewShort(val int16) Value {
 	return Value{Short: &val}
 }
 
@@ -141,7 +143,11 @@ func (v *Value) asString() (dataType string, text string) {
 	if v.Int != nil {
 		return "int", strconv.FormatInt(int64(*v.Int), 10)
 	} else if v.Boolean != nil {
-		return "boolean", strconv.FormatBool(*v.Boolean)
+		if *v.Boolean {
+			return "boolean", "1"
+		} else {
+			return "boolean", "0"
+		}
 	} else if v.String != nil {
 		return "string", *v.String
 	} else if v.Double != nil {
@@ -183,36 +189,36 @@ func (v *Value) Print() (text string) {
 }
 
 func (v *Value) asXml(encoder *xml.Encoder) {
-	xmlStart(encoder, "value")
+	util.Start(encoder, "value")
 
 	dataType, text := v.asString()
 
 	switch dataType {
 	case "ex:nil":
-		xmlEmpty(encoder, dataType)
+		util.Empty(encoder, dataType)
 	case "array":
 		v.xmlArrayValue(encoder, v.Array)
 	default:
 		v.xmlValue(encoder, dataType, text)
 	}
 
-	xmlEnd(encoder, "value")
+	util.End(encoder, "value")
 }
 
 func (v *Value) xmlValue(encoder *xml.Encoder, name string, value string) {
-	xmlStart(encoder, name)
-	xmlCharData(encoder, value)
-	xmlEnd(encoder, name)
+	util.Start(encoder, name)
+	util.CharData(encoder, value)
+	util.End(encoder, name)
 }
 
 func (v *Value) xmlArrayValue(encoder *xml.Encoder, values []Value) {
-	xmlStart(encoder, "array")
-	xmlStart(encoder, "data")
+	util.Start(encoder, "array")
+	util.Start(encoder, "data")
 
 	for _, val := range values {
 		val.asXml(encoder)
 	}
 
-	xmlEnd(encoder, "data")
-	xmlEnd(encoder, "array")
+	util.End(encoder, "data")
+	util.End(encoder, "array")
 }

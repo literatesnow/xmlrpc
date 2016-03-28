@@ -16,13 +16,13 @@ func integerData() (xmlDoc []string, values []Value) {
 			"<i4>-9223372036854775808</i4>",  //-overflow
 			"<i4></i4>"},                     //invalid
 		[]Value{
-			NewValueInt(2147483647),
-			NewValueInt(-2147483648),
-			NewValueInt(0),
-			NewValueInt(-1),
-			NewValueInt(2147483647),
-			NewValueInt(-2147483648),
-			NewValueInt(0)}
+			NewInt(2147483647),
+			NewInt(-2147483648),
+			NewInt(0),
+			NewInt(-1),
+			NewInt(2147483647),
+			NewInt(-2147483648),
+			NewInt(0)}
 }
 
 func integerValidData() (xmlDoc []string, values []Value) {
@@ -32,10 +32,10 @@ func integerValidData() (xmlDoc []string, values []Value) {
 			"<int>0</int>",
 			"<int>-1</int>"},
 		[]Value{
-			NewValueInt(2147483647),
-			NewValueInt(-2147483648),
-			NewValueInt(0),
-			NewValueInt(-1)}
+			NewInt(2147483647),
+			NewInt(-2147483648),
+			NewInt(0),
+			NewInt(-1)}
 }
 
 func booleanData() (xmlDoc []string, values []Value) {
@@ -53,27 +53,27 @@ func booleanData() (xmlDoc []string, values []Value) {
 			"<boolean>bananas</boolean>",
 			"<boolean></boolean>"}, //invalid
 		[]Value{
-			NewValueBoolean(true),
-			NewValueBoolean(true),
-			NewValueBoolean(false),
-			NewValueBoolean(false),
-			NewValueBoolean(false),
-			NewValueBoolean(false),
-			NewValueBoolean(true),
-			NewValueBoolean(false),
-			NewValueBoolean(false),
-			NewValueBoolean(false),
-			NewValueBoolean(false),
-			NewValueBoolean(false)}
+			NewBoolean(true),
+			NewBoolean(true),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(true),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false)}
 }
 
 func booleanValidData() (xmlDoc []string, values []Value) {
 	return []string{
-			"<boolean>true</boolean>",
-			"<boolean>false</boolean>"},
+			"<boolean>1</boolean>",
+			"<boolean>0</boolean>"},
 		[]Value{
-			NewValueBoolean(true),
-			NewValueBoolean(false)}
+			NewBoolean(true),
+			NewBoolean(false)}
 }
 
 func stringData() (xmlDoc []string, values []Value) {
@@ -87,14 +87,14 @@ func stringData() (xmlDoc []string, values []Value) {
 			"<string>bananas</string>",
 			"<string></string>"},
 		[]Value{
-			NewValueString("This is a string."),
-			NewValueString("This is a string with & < > \" ' characters."),
-			NewValueString("Unicode: \" \"."),
-			NewValueString("New line: \n"),
-			NewValueString("yes"),
-			NewValueString("no"),
-			NewValueString("bananas"),
-			NewValueString("")}
+			NewString("This is a string."),
+			NewString("This is a string with & < > \" ' characters."),
+			NewString("Unicode: \" \"."),
+			NewString("New line: \n"),
+			NewString("yes"),
+			NewString("no"),
+			NewString("bananas"),
+			NewString("")}
 }
 
 func stringValidData() (xmlDoc []string, values []Value) {
@@ -108,14 +108,14 @@ func stringValidData() (xmlDoc []string, values []Value) {
 			"<string>bananas</string>",
 			"<string></string>"},
 		[]Value{
-			NewValueString("This is a string."),
-			NewValueString("This is a string with & < > \" ' characters."),
-			NewValueString("Unicode: \" \"."),
-			NewValueString("New line: \n"),
-			NewValueString("yes"),
-			NewValueString("no"),
-			NewValueString("bananas"),
-			NewValueString("")}
+			NewString("This is a string."),
+			NewString("This is a string with & < > \" ' characters."),
+			NewString("Unicode: \" \"."),
+			NewString("New line: \n"),
+			NewString("yes"),
+			NewString("no"),
+			NewString("bananas"),
+			NewString("")}
 }
 
 func doubleData() (xmlDoc []string, values []Value) {
@@ -129,14 +129,14 @@ func doubleData() (xmlDoc []string, values []Value) {
 			"<double>-9223372036854775808</double>",
 			"<double></double>"}, //invalid
 		[]Value{
-			NewValueDouble(0.123456789012345678901234567890),
-			NewValueDouble(-0.123456789012345678901234567890),
-			NewValueDouble(0),
-			NewValueDouble(0.0),
-			NewValueDouble(-1),
-			NewValueDouble(9223372036854775807),
-			NewValueDouble(-9223372036854775808),
-			NewValueDouble(0)}
+			NewDouble(0.123456789012345678901234567890),
+			NewDouble(-0.123456789012345678901234567890),
+			NewDouble(0),
+			NewDouble(0.0),
+			NewDouble(-1),
+			NewDouble(9223372036854775807),
+			NewDouble(-9223372036854775808),
+			NewDouble(0)}
 }
 
 func doubleValidData() (xmlDoc []string, values []Value) {
@@ -148,12 +148,12 @@ func doubleValidData() (xmlDoc []string, values []Value) {
 			"<double>9223372036854776000</double>",
 			"<double>-9223372036854776000</double>"},
 		[]Value{
-			NewValueDouble(0.123456789012345678901234567890),
-			NewValueDouble(-0.123456789012345678901234567890),
-			NewValueDouble(0),
-			NewValueDouble(-1),
-			NewValueDouble(9223372036854776000),
-			NewValueDouble(-9223372036854776000)}
+			NewDouble(0.123456789012345678901234567890),
+			NewDouble(-0.123456789012345678901234567890),
+			NewDouble(0),
+			NewDouble(-1),
+			NewDouble(9223372036854776000),
+			NewDouble(-9223372036854776000)}
 }
 
 func dateTimeData() (xmlDoc []string, values []Value) {
@@ -162,16 +162,16 @@ func dateTimeData() (xmlDoc []string, values []Value) {
 			"<dateTime>TODO</dateTime>",
 			"<dateTime.iso8601></dateTime.iso8601>"},
 		[]Value{
-			NewValueDateTime("TODO"),
-			NewValueDateTime("TODO"),
-			NewValueDateTime("")}
+			NewDateTime("TODO"),
+			NewDateTime("TODO"),
+			NewDateTime("")}
 }
 
 func dateTimeValidData() (xmlDoc []string, values []Value) {
 	return []string{
 			"<dateTime.iso8601>TODO</dateTime.iso8601>"},
 		[]Value{
-			NewValueDateTime("TODO")}
+			NewDateTime("TODO")}
 }
 
 func base64Data() (xmlDoc []string, values []Value) {
@@ -179,15 +179,15 @@ func base64Data() (xmlDoc []string, values []Value) {
 			"<base64>TODO</base64>",
 			"<base64></base64>"},
 		[]Value{
-			NewValueBase64("TODO"),
-			NewValueBase64("")}
+			NewBase64("TODO"),
+			NewBase64("")}
 }
 
 func base64ValidData() (xmlDoc []string, values []Value) {
 	return []string{
 			"<base64>TODO</base64>"},
 		[]Value{
-			NewValueBase64("TODO")}
+			NewBase64("TODO")}
 }
 
 func arrayData() (xmlDoc []string, values []Value) {
@@ -198,10 +198,10 @@ func arrayData() (xmlDoc []string, values []Value) {
               <value><i8>1294959993</i8></value>
               </data></array>`},
 		[]Value{{Array: []Value{
-			NewValueInt(59392),
-			NewValueInt(-49528),
-			NewValueArray([]Value{NewValueString("wheee")}),
-			NewValueLong(1294959993)}}}
+			NewInt(59392),
+			NewInt(-49528),
+			NewArray([]Value{NewString("wheee")}),
+			NewLong(1294959993)}}}
 }
 
 func arrayValidData() (xmlDoc []string, values []Value) {
@@ -212,10 +212,10 @@ func arrayValidData() (xmlDoc []string, values []Value) {
 			"<value><ex:i8>1294959993</ex:i8></value>" +
 			"</data></array>"},
 		[]Value{{Array: []Value{
-			NewValueInt(59392),
-			NewValueInt(-49528),
-			NewValueArray([]Value{NewValueString("wheee")}),
-			NewValueLong(1294959993)}}}
+			NewInt(59392),
+			NewInt(-49528),
+			NewArray([]Value{NewString("wheee")}),
+			NewLong(1294959993)}}}
 }
 
 func nilData() (xmlDoc []string, values []Value) {
@@ -225,17 +225,17 @@ func nilData() (xmlDoc []string, values []Value) {
 			"<nil></nil>",
 			"<ex:nil></ex:nil>"},
 		[]Value{
-			NewValueNil(),
-			NewValueNil(),
-			NewValueNil(),
-			NewValueNil()}
+			NewNil(),
+			NewNil(),
+			NewNil(),
+			NewNil()}
 }
 
 func nilValidData() (xmlDoc []string, values []Value) {
 	return []string{
 			"<ex:nil></ex:nil>"},
 		[]Value{
-			NewValueNil()}
+			NewNil()}
 }
 
 func byteData() (xmlDoc []string, values []Value) {
@@ -248,13 +248,13 @@ func byteData() (xmlDoc []string, values []Value) {
 			"<ex:i1>-2147483648</ex:i1>", //-overflow
 			"<byte></byte>"},             //invalid
 		[]Value{
-			NewValueByte(255),
-			NewValueByte(0),
-			NewValueByte(0),
-			NewValueByte(255),
-			NewValueByte(255),
-			NewValueByte(0),
-			NewValueByte(0)}
+			NewByte(255),
+			NewByte(0),
+			NewByte(0),
+			NewByte(255),
+			NewByte(255),
+			NewByte(0),
+			NewByte(0)}
 }
 
 func byteValidData() (xmlDoc []string, values []Value) {
@@ -262,8 +262,8 @@ func byteValidData() (xmlDoc []string, values []Value) {
 			"<ex:i1>255</ex:i1>", //max byte
 			"<ex:i1>0</ex:i1>"},  //min byte
 		[]Value{
-			NewValueByte(255),
-			NewValueByte(0)}
+			NewByte(255),
+			NewByte(0)}
 }
 
 func floatData() (xmlDoc []string, values []Value) {
@@ -277,14 +277,14 @@ func floatData() (xmlDoc []string, values []Value) {
 			"<float>-9223372036854775808</float>",
 			"<ex:float></ex:float>"}, //invalid
 		[]Value{
-			NewValueFloat(0.123456789012345678901234567890),
-			NewValueFloat(-0.123456789012345678901234567890),
-			NewValueFloat(0),
-			NewValueFloat(0.0),
-			NewValueFloat(-1),
-			NewValueFloat(9223372036854775807),
-			NewValueFloat(-9223372036854775808),
-			NewValueFloat(0)}
+			NewFloat(0.123456789012345678901234567890),
+			NewFloat(-0.123456789012345678901234567890),
+			NewFloat(0),
+			NewFloat(0.0),
+			NewFloat(-1),
+			NewFloat(9223372036854775807),
+			NewFloat(-9223372036854775808),
+			NewFloat(0)}
 }
 
 func floatValidData() (xmlDoc []string, values []Value) {
@@ -294,10 +294,10 @@ func floatValidData() (xmlDoc []string, values []Value) {
 			"<ex:float>0</ex:float>",
 			"<ex:float>-1</ex:float>"},
 		[]Value{
-			NewValueFloat(0.12345679),
-			NewValueFloat(-0.12345679),
-			NewValueFloat(0),
-			NewValueFloat(-1)}
+			NewFloat(0.12345679),
+			NewFloat(-0.12345679),
+			NewFloat(0),
+			NewFloat(-1)}
 }
 
 func longData() (xmlDoc []string, values []Value) {
@@ -310,13 +310,13 @@ func longData() (xmlDoc []string, values []Value) {
 			"<long>-92233720368547758089223372036854775808</long>",  //-overflow
 			"<i8></i8>"}, //invalid
 		[]Value{
-			NewValueLong(9223372036854775807),
-			NewValueLong(-9223372036854775808),
-			NewValueLong(0),
-			NewValueLong(-1),
-			NewValueLong(9223372036854775807),
-			NewValueLong(-9223372036854775808),
-			NewValueLong(0)}
+			NewLong(9223372036854775807),
+			NewLong(-9223372036854775808),
+			NewLong(0),
+			NewLong(-1),
+			NewLong(9223372036854775807),
+			NewLong(-9223372036854775808),
+			NewLong(0)}
 }
 
 func longValidData() (xmlDoc []string, values []Value) {
@@ -326,10 +326,10 @@ func longValidData() (xmlDoc []string, values []Value) {
 			"<ex:i8>0</ex:i8>",
 			"<ex:i8>-1</ex:i8>"},
 		[]Value{
-			NewValueLong(9223372036854775807),
-			NewValueLong(-9223372036854775808),
-			NewValueLong(0),
-			NewValueLong(-1)}
+			NewLong(9223372036854775807),
+			NewLong(-9223372036854775808),
+			NewLong(0),
+			NewLong(-1)}
 }
 
 func shortData() (xmlDoc []string, values []Value) {
@@ -342,13 +342,13 @@ func shortData() (xmlDoc []string, values []Value) {
 			"<ex:i2>-2147483648</ex:i2>", //-overflow
 			"<short></short>"},           //invalid
 		[]Value{
-			NewValueShort(32767),
-			NewValueShort(-32768),
-			NewValueShort(0),
-			NewValueShort(-1),
-			NewValueShort(32767),
-			NewValueShort(-32768),
-			NewValueShort(0)}
+			NewShort(32767),
+			NewShort(-32768),
+			NewShort(0),
+			NewShort(-1),
+			NewShort(32767),
+			NewShort(-32768),
+			NewShort(0)}
 }
 
 func shortValidData() (xmlDoc []string, values []Value) {
@@ -358,10 +358,10 @@ func shortValidData() (xmlDoc []string, values []Value) {
 			"<ex:i2>0</ex:i2>",
 			"<ex:i2>-1</ex:i2>"},
 		[]Value{
-			NewValueShort(32767),
-			NewValueShort(-32768),
-			NewValueShort(0),
-			NewValueShort(-1)}
+			NewShort(32767),
+			NewShort(-32768),
+			NewShort(0),
+			NewShort(-1)}
 }
 
 func mixedArrayData() (xmlDoc []string, values []Value) {
@@ -369,15 +369,17 @@ func mixedArrayData() (xmlDoc []string, values []Value) {
               <value><int>485838</int></value>
               <value><i4>58388</i4></value>
               <value><i8>-4829485744</i8></value>
+              <value><boolean>1</boolean></value>
               <value><string>Hello World &amp; You!</string></value>
               <value>:) :D !:&lt; :&gt;</value>
               </data></array>`},
 		[]Value{{Array: []Value{
-			NewValueInt(485838),
-			NewValueInt(58388),
-			NewValueLong(-4829485744),
-			NewValueString("Hello World & You!"),
-			NewValueString(":) :D !:< :>")}}}
+			NewInt(485838),
+			NewInt(58388),
+			NewLong(-4829485744),
+			NewBoolean(true),
+			NewString("Hello World & You!"),
+			NewString(":) :D !:< :>")}}}
 }
 
 func TestIntegerParam(t *testing.T) {
@@ -593,9 +595,7 @@ func TestCreateRequestShortParam(t *testing.T) {
 }
 
 func createCompareRequest(methodName string, values []Value, expected string, t *testing.T) {
-	cl := Client{}
-
-	actual := string(cl.CreateRequest(methodName, values))
+	actual := string(CreateRequest(methodName, values))
 
 	if actual != expected {
 		t.Fatalf("Expected document: %s\ngot: %s\n", expected, actual)
@@ -615,8 +615,7 @@ func parseRequest(params []string, expecteds []Value, t *testing.T) {
 	t.Logf("Expected (XML): %s", xml)
 
 	buf := bytes.NewBufferString(xml)
-	cl := Client{}
-	actuals := cl.ParseResponse(buf)
+	actuals := ParseResponse(buf)
 
 	if len(actuals) != len(expecteds) {
 		t.Fatalf("Expected count %v values, got %v", len(expecteds), len(actuals))

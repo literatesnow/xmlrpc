@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/xml"
+
+	"bitbucket.org/unrulyknight/xmlrpc/util"
 )
 
 func CreateRequest(methodName string, values []Value) (document []byte) {
@@ -14,12 +16,12 @@ func CreateRequest(methodName string, values []Value) (document []byte) {
 
 	encoder := xml.NewEncoder(writer)
 
-	xmlStart(encoder, "methodCall")
-	xmlStart(encoder, "methodName")
-	xmlCharData(encoder, methodName)
-	xmlEnd(encoder, "methodName")
+	util.Start(encoder, "methodCall")
+	util.Start(encoder, "methodName")
+	util.CharData(encoder, methodName)
+	util.End(encoder, "methodName")
 	xmlParams(encoder, values)
-	xmlEnd(encoder, "methodCall")
+	util.End(encoder, "methodCall")
 
 	encoder.Flush()
 
@@ -130,37 +132,18 @@ func nextElem(decoder *xml.Decoder, name string) (found bool) {
 	return false
 }
 
-func xmlStart(encoder *xml.Encoder, name string) {
-	encoder.EncodeToken(xml.StartElement{Name: xml.Name{Local: name}})
-}
-
-func xmlEnd(encoder *xml.Encoder, name string) {
-	encoder.EncodeToken(xml.EndElement{Name: xml.Name{Local: name}})
-}
-
-func xmlEmpty(encoder *xml.Encoder, name string) {
-	xmlStart(encoder, name)
-	xmlEnd(encoder, name)
-}
-
-func xmlCharData(encoder *xml.Encoder, str string) {
-	if str != "" {
-		encoder.EncodeToken(xml.CharData(str))
-	}
-}
-
 func xmlParams(encoder *xml.Encoder, values []Value) {
 	if len(values) == 0 {
 		return
 	}
 
-	xmlStart(encoder, "params")
+	util.Start(encoder, "params")
 
 	for _, val := range values {
-		xmlStart(encoder, "param")
+		util.Start(encoder, "param")
 		val.asXml(encoder)
-		xmlEnd(encoder, "param")
+		util.End(encoder, "param")
 	}
 
-	xmlEnd(encoder, "params")
+	util.End(encoder, "params")
 }
