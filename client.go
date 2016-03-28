@@ -6,10 +6,7 @@ import (
 	"encoding/xml"
 )
 
-type Client struct {
-}
-
-func (cl *Client) CreateRequest(methodName string, values []Value) (document []byte) {
+func CreateRequest(methodName string, values []Value) (document []byte) {
 	var buf bytes.Buffer
 
 	writer := bufio.NewWriter(&buf)
@@ -17,33 +14,33 @@ func (cl *Client) CreateRequest(methodName string, values []Value) (document []b
 
 	encoder := xml.NewEncoder(writer)
 
-	appendStart(encoder, "methodCall")
-	appendStart(encoder, "methodName")
-	appendCharData(encoder, methodName)
-	appendEnd(encoder, "methodName")
-	appendParams(encoder, values)
-	appendEnd(encoder, "methodCall")
+	xmlStart(encoder, "methodCall")
+	xmlStart(encoder, "methodName")
+	xmlCharData(encoder, methodName)
+	xmlEnd(encoder, "methodName")
+	xmlParams(encoder, values)
+	xmlEnd(encoder, "methodCall")
 
 	encoder.Flush()
 
 	return buf.Bytes()
 }
 
-func (cl *Client) ParseResponse(response *bytes.Buffer) (values []Value) {
+func ParseResponse(response *bytes.Buffer) (values []Value) {
 	decoder := xml.NewDecoder(response)
 	values = make([]Value, 0)
 
-	if !cl.nextElem(decoder, "methodResponse") ||
-		!cl.nextElem(decoder, "params") {
+	if !nextElem(decoder, "methodResponse") ||
+		!nextElem(decoder, "params") {
 		return values
 	}
 
 	for {
-		if !cl.nextElem(decoder, "param") {
+		if !nextElem(decoder, "param") {
 			break
 		}
 
-		if value := cl.parseValue(decoder); value != nil {
+		if value := parseValue(decoder); value != nil {
 			values = append(values, *value)
 		}
 	}
@@ -51,7 +48,7 @@ func (cl *Client) ParseResponse(response *bytes.Buffer) (values []Value) {
 	return values
 }
 
-func (cl *Client) parseValue(decoder *xml.Decoder) (value *Value) {
+func parseValue(decoder *xml.Decoder) (value *Value) {
 	value = nil
 
 	for {
@@ -62,9 +59,9 @@ func (cl *Client) parseValue(decoder *xml.Decoder) (value *Value) {
 
 		switch elem := token.(type) {
 		case xml.CharData:
-			cl.parseCharData(value, string(elem))
+			parseCharData(value, string(elem))
 		case xml.StartElement:
-			cl.parseStartElement(decoder, &value, elem.Name.Local)
+			parseStartElement(decoder, &value, elem.Name.Local)
 		case xml.EndElement:
 			if elem.Name.Local == "value" || value == nil {
 				return value
@@ -75,7 +72,7 @@ func (cl *Client) parseValue(decoder *xml.Decoder) (value *Value) {
 	return nil
 }
 
-func (cl *Client) parseCharData(value *Value, str string) {
+func parseCharData(value *Value, str string) {
 	if value == nil {
 		return
 	}
@@ -83,7 +80,7 @@ func (cl *Client) parseCharData(value *Value, str string) {
 	value.FromString(str)
 }
 
-func (cl *Client) parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) {
+func parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) {
 	if elemName == "value" {
 		*valuePtr = &Value{}
 		return
@@ -97,17 +94,17 @@ func (cl *Client) parseStartElement(decoder *xml.Decoder, valuePtr **Value, elem
 	value.FromRpc(elemName)
 
 	if value.Array != nil {
-		cl.parseValueArray(decoder, value)
+		parseValueArray(decoder, value)
 	}
 }
 
-func (cl *Client) parseValueArray(decoder *xml.Decoder, value *Value) {
-	if !cl.nextElem(decoder, "data") {
+func parseValueArray(decoder *xml.Decoder, value *Value) {
+	if !nextElem(decoder, "data") {
 		return //TODO return error
 	}
 
 	for {
-		if val := cl.parseValue(decoder); val != nil {
+		if val := parseValue(decoder); val != nil {
 			value.Array = append(value.Array, *val)
 		} else {
 			break
@@ -115,7 +112,7 @@ func (cl *Client) parseValueArray(decoder *xml.Decoder, value *Value) {
 	}
 }
 
-func (cl *Client) nextElem(decoder *xml.Decoder, name string) (found bool) {
+func nextElem(decoder *xml.Decoder, name string) (found bool) {
 	for {
 		token, err := decoder.Token()
 		if token == nil || err != nil {
@@ -133,32 +130,37 @@ func (cl *Client) nextElem(decoder *xml.Decoder, name string) (found bool) {
 	return false
 }
 
-func appendStart(encoder *xml.Encoder, name string) {
+func xmlStart(encoder *xml.Encoder, name string) {
 	encoder.EncodeToken(xml.StartElement{Name: xml.Name{Local: name}})
 }
 
-func appendEnd(encoder *xml.Encoder, name string) {
+func xmlEnd(encoder *xml.Encoder, name string) {
 	encoder.EncodeToken(xml.EndElement{Name: xml.Name{Local: name}})
 }
 
-func appendCharData(encoder *xml.Encoder, str string) {
+func xmlEmpty(encoder *xml.Encoder, name string) {
+	xmlStart(encoder, name)
+	xmlEnd(encoder, name)
+}
+
+func xmlCharData(encoder *xml.Encoder, str string) {
 	if str != "" {
 		encoder.EncodeToken(xml.CharData(str))
 	}
 }
 
-func appendParams(encoder *xml.Encoder, values []Value) {
+func xmlParams(encoder *xml.Encoder, values []Value) {
 	if len(values) == 0 {
 		return
 	}
 
-	appendStart(encoder, "params")
+	xmlStart(encoder, "params")
 
 	for _, val := range values {
-		appendStart(encoder, "param")
-		val.appendXml(encoder)
-		appendEnd(encoder, "param")
+		xmlStart(encoder, "param")
+		val.asXml(encoder)
+		xmlEnd(encoder, "param")
 	}
 
-	appendEnd(encoder, "params")
+	xmlEnd(encoder, "params")
 }
