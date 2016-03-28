@@ -3,6 +3,7 @@ package xmlrpc
 import (
 	"encoding/xml"
 	"strconv"
+	"strings"
 )
 
 type Value struct {
@@ -136,53 +137,82 @@ func (v *Value) FromRpc(name string) {
 	}
 }
 
-func (v *Value) appendXml(encoder *xml.Encoder) {
-	appendStart(encoder, "value")
-
+func (v *Value) asString() (dataType string, text string) {
 	if v.Int != nil {
-		v.appendElementXml(encoder, "int", strconv.FormatInt(int64(*v.Int), 10))
+		return "int", strconv.FormatInt(int64(*v.Int), 10)
 	} else if v.Boolean != nil {
-		v.appendElementXml(encoder, "boolean", strconv.FormatBool(*v.Boolean))
+		return "boolean", strconv.FormatBool(*v.Boolean)
 	} else if v.String != nil {
-		v.appendElementXml(encoder, "string", *v.String)
+		return "string", *v.String
 	} else if v.Double != nil {
-		v.appendElementXml(encoder, "double", strconv.FormatFloat(*v.Double, 'f', -1, 64))
+		return "double", strconv.FormatFloat(*v.Double, 'f', -1, 64)
 	} else if v.DateTime != nil {
-		v.appendElementXml(encoder, "dateTime.iso8601", *v.DateTime)
+		return "dateTime.iso8601", *v.DateTime
 	} else if v.Base64 != nil {
-		v.appendElementXml(encoder, "base64", *v.Base64)
+		return "base64", *v.Base64
 	} else if v.Nil != nil {
-		appendStart(encoder, "ex:nil")
-		appendEnd(encoder, "ex:nil")
+		return "ex:nil", ""
 	} else if v.Byte != nil {
-		v.appendElementXml(encoder, "ex:i1", strconv.Itoa(int(*v.Byte)))
+		return "ex:i1", strconv.Itoa(int(*v.Byte))
 	} else if v.Float != nil {
-		v.appendElementXml(encoder, "ex:float", strconv.FormatFloat(float64(*v.Float), 'f', -1, 32))
+		return "ex:float", strconv.FormatFloat(float64(*v.Float), 'f', -1, 32)
 	} else if v.Long != nil {
-		v.appendElementXml(encoder, "ex:i8", strconv.FormatInt(*v.Long, 10))
+		return "ex:i8", strconv.FormatInt(*v.Long, 10)
 	} else if v.Short != nil {
-		v.appendElementXml(encoder, "ex:i2", strconv.FormatInt(int64(*v.Short), 10))
+		return "ex:i2", strconv.FormatInt(int64(*v.Short), 10)
 	} else if v.Array != nil {
-		v.appendArrayXml(encoder, v.Array)
+		return "array", v.asStringArray(v.Array)
+	} else {
+		return "empty", ""
+	}
+}
+
+func (v *Value) asStringArray(values []Value) (text string) {
+	parts := make([]string, len(values))
+
+	for i, val := range values {
+		parts[i] = val.Print()
 	}
 
-	appendEnd(encoder, "value")
+	return "[" + strings.Join(parts, ", ") + "]"
 }
 
-func (v *Value) appendElementXml(encoder *xml.Encoder, name string, value string) {
-	appendStart(encoder, name)
-	appendCharData(encoder, value)
-	appendEnd(encoder, name)
+func (v *Value) Print() (text string) {
+	dataType, text := v.asString()
+	return "{" + dataType + " " + text + "}"
 }
 
-func (v *Value) appendArrayXml(encoder *xml.Encoder, values []Value) {
-	appendStart(encoder, "array")
-	appendStart(encoder, "data")
+func (v *Value) asXml(encoder *xml.Encoder) {
+	xmlStart(encoder, "value")
+
+	dataType, text := v.asString()
+
+	switch dataType {
+	case "ex:nil":
+		xmlEmpty(encoder, dataType)
+	case "array":
+		v.xmlArrayValue(encoder, v.Array)
+	default:
+		v.xmlValue(encoder, dataType, text)
+	}
+
+	xmlEnd(encoder, "value")
+}
+
+func (v *Value) xmlValue(encoder *xml.Encoder, name string, value string) {
+	xmlStart(encoder, name)
+	xmlCharData(encoder, value)
+	xmlEnd(encoder, name)
+}
+
+func (v *Value) xmlArrayValue(encoder *xml.Encoder, values []Value) {
+	xmlStart(encoder, "array")
+	xmlStart(encoder, "data")
 
 	for _, val := range values {
-		val.appendXml(encoder)
+		val.asXml(encoder)
 	}
 
-	appendEnd(encoder, "data")
-	appendEnd(encoder, "array")
+	xmlEnd(encoder, "data")
+	xmlEnd(encoder, "array")
 }
