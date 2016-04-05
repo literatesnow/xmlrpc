@@ -3,9 +3,19 @@ package xmlrpc
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
+	"errors"
+	"io"
 
 	"bitbucket.org/unrulyknight/xmlrpc/util"
+)
+
+const (
+	curlyLeft   = json.Delim('{')
+	curlyRight  = json.Delim('}')
+	squareLeft  = json.Delim('[')
+	squareRight = json.Delim(']')
 )
 
 func CreateRequest(methodName string, values []Value) (document []byte) {
@@ -146,4 +156,133 @@ func xmlParams(encoder *xml.Encoder, values []Value) {
 	}
 
 	util.End(encoder, "params")
+}
+
+//JSON
+
+func ParseJsonRequest(body io.Reader) (methodName string, params []Value, err error) {
+	decoder := json.NewDecoder(body)
+
+	if err := nextJsonDelim(decoder, curlyLeft); err != nil {
+		return "", nil, err
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return "", nil, err
+		}
+
+		switch token {
+		case "methodName":
+			if methodName, err = nextJsonString(decoder); err != nil {
+				return "", nil, err
+			}
+		case "params":
+			if params, err = parseJsonValues(decoder); err != nil {
+				return "", nil, err
+			}
+		}
+	}
+
+	return methodName, params, nil
+}
+
+func nextJsonString(decoder *json.Decoder) (delim string, err error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return "", err
+	}
+
+	if str, ok := token.(string); ok {
+		return str, nil
+	}
+
+	return "", errors.New("Not a string")
+}
+
+func nextJsonDelim(decoder *json.Decoder, delim json.Delim) (err error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+
+	if token != delim {
+		return errors.New("Unexpected next token")
+	}
+
+	return nil
+}
+
+func parseJsonValues(decoder *json.Decoder) (values []Value, err error) {
+	if err := nextJsonDelim(decoder, squareLeft); err != nil {
+		return nil, err
+	}
+
+	values = make([]Value, 0)
+	hasType := false
+
+	var val *Value
+
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		if token == squareRight {
+			break
+		}
+
+		if token == curlyLeft {
+			val = &Value{}
+
+		} else if token == curlyRight {
+			if val != nil {
+				values = append(values, *val)
+				val = nil
+				hasType = false
+			}
+
+		} else if val != nil {
+			if !hasType {
+				if str, ok := token.(string); ok {
+					val.FromRpc(str)
+					hasType = true
+
+					if val.Array != nil {
+						val.Array, err = parseJsonValues(decoder)
+						if err != nil {
+							return nil, err
+						}
+					}
+
+				} else {
+					return nil, errors.New("Invalid token")
+				}
+			} else {
+				switch p := token.(type) {
+				case string:
+					val.FromString(p)
+				case float64:
+					val.FromNumber(p)
+				case bool:
+					val.FromBoolean(p)
+				case nil:
+				default:
+					return nil, errors.New("Unexpected token")
+				}
+			}
+		}
+	}
+
+	return values, nil
 }

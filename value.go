@@ -99,6 +99,28 @@ func (v *Value) FromString(str string) {
 	}
 }
 
+func (v *Value) FromNumber(num float64) {
+	if v.Int != nil {
+		*v.Int = int32(num)
+	} else if v.Double != nil {
+		*v.Double = num
+	} else if v.Byte != nil {
+		*v.Byte = byte(num)
+	} else if v.Float != nil {
+		*v.Float = float32(num)
+	} else if v.Long != nil {
+		*v.Long = int64(num)
+	} else if v.Short != nil {
+		*v.Short = int16(num)
+	}
+}
+
+func (v *Value) FromBoolean(b bool) {
+	if v.Boolean != nil {
+		*v.Boolean = b
+	}
+}
+
 func (v *Value) FromRpc(name string) {
 	switch name {
 	case "int", "i4":

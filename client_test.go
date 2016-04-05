@@ -3,8 +3,26 @@ package xmlrpc
 import (
 	"bytes"
 	"encoding/xml"
+	"strconv"
+	"strings"
 	"testing"
 )
+
+// Both
+
+func printValueArray(values []Value) (str string) {
+	if values == nil {
+		return "(nil)"
+	}
+
+	for i, val := range values {
+		str += "\n[" + strconv.Itoa(i) + "]: " + val.Print()
+	}
+
+	return str
+}
+
+// XML
 
 func integerData() (xmlDoc []string, values []Value) {
 	return []string{
@@ -622,9 +640,9 @@ func parseRequest(params []string, expecteds []Value, t *testing.T) {
 	}
 
 	t.Logf("===========================\n")
-	t.Logf("Expected: %v\n", expecteds)
+	t.Logf("Expected: %s\n", printValueArray(expecteds))
 	t.Logf("---------------------------\n")
-	t.Logf("Actual: %v\n", actuals)
+	t.Logf("Actual: %s\n", printValueArray(actuals))
 	t.Logf("===========================\n")
 
 	for i, expected := range expecteds {
@@ -751,3 +769,523 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 
 	t.Fatalf("Nothing matched while comparing\n")
 }
+
+// JSON
+
+func integerJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"int":2147483647}`, //max int32
+			`{"i4":-2147483648}`, //min int32
+			`{"i4":0}`,
+			`{"int":-1}`,
+			`{"int":9223372036854775807}`, //overflow
+			`{"i4":-9223372036854775808}`, //-overflow
+			`{"i4":"invalid"}`},           //invalid
+		[]Value{
+			NewInt(2147483647),
+			NewInt(-2147483648),
+			NewInt(0),
+			NewInt(-1),
+			NewInt(-2147483648),
+			NewInt(-2147483648),
+			NewInt(0)}
+}
+
+func integerJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"int":2147483647}`,  //max int32
+			`{"int":-2147483648}`, //min int32
+			`{"int":0}`,
+			`{"int":-1}`},
+		[]Value{
+			NewInt(2147483647),
+			NewInt(-2147483648),
+			NewInt(0),
+			NewInt(-1)}
+}
+
+func booleanJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"boolean":true}`,
+			`{"boolean":"TRUE"}`,
+			`{"boolean":"tRuE"}`,
+			`{"boolean":false}`,
+			`{"boolean":"FALSE"}`,
+			`{"boolean":"fAlSe"}`,
+			`{"boolean":1}`,
+			`{"boolean":0}`,
+			`{"boolean":"yes"}`,
+			`{"boolean":"no"}`,
+			`{"boolean":null}`,
+			`{"boolean":"invalid"}`}, //invalid
+		[]Value{
+			NewBoolean(true),
+			NewBoolean(true),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false),
+			NewBoolean(false)}
+}
+
+func booleanJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"boolean":true}`,
+			`{"boolean":false}`},
+		[]Value{
+			NewBoolean(true),
+			NewBoolean(false)}
+}
+
+func stringJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"string":"This is a \"string\"."}`,
+			`{"string":"This is a 'string' with &amp; &lt; &gt; &quot; &apos; characters."}`,
+			`{"string":"Unicode: \u0027hello\u0027 \u0022there\u0022."}`,
+			`{"string":"New line: \n"}`,
+			`{"string":"yes"}`,
+			`{"string":"no"}`,
+			`{"string":"bananas"}`,
+			`{"string":null}`,
+			`{"string":""}`},
+		[]Value{
+			NewString("This is a \"string\"."),
+			NewString("This is a 'string' with &amp; &lt; &gt; &quot; &apos; characters."),
+			NewString("Unicode: 'hello' \"there\"."),
+			NewString("New line: \n"),
+			NewString("yes"),
+			NewString("no"),
+			NewString("bananas"),
+			NewString(""),
+			NewString("")}
+}
+
+func stringJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"string":"This is a string."}`,
+			`{"string":"This is a string with &amp; &lt; &gt; &#34; &#39; characters."}`,
+			`{"string":"Unicode: &#34; &#34;."}`,
+			`{"string":"New line: \n"}`,
+			`{"string":"yes"}`,
+			`{"string":"no"}`,
+			`{"string":"bananas"}`,
+			`{"string":""}`},
+		[]Value{
+			NewString("This is a string."),
+			NewString("This is a string with & < > \" ' characters."),
+			NewString("Unicode: \" \"."),
+			NewString("New line: \n"),
+			NewString("yes"),
+			NewString("no"),
+			NewString("bananas"),
+			NewString("")}
+}
+
+func doubleJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"double":0.123456789012345678901234567890}`,
+			`{"double":-0.123456789012345678901234567890}`,
+			`{"double":0}`,
+			`{"double":0.000000}`,
+			`{"double":-1}`,
+			`{"double":9223372036854775807}`,
+			`{"double":-9223372036854775808}`,
+			`{"double":"invalid"}`}, //invalid
+		[]Value{
+			NewDouble(0.123456789012345678901234567890),
+			NewDouble(-0.123456789012345678901234567890),
+			NewDouble(0),
+			NewDouble(0.0),
+			NewDouble(-1),
+			NewDouble(9223372036854775807),
+			NewDouble(-9223372036854775808),
+			NewDouble(0)}
+}
+
+func doubleJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"double":0.12345678901234568}`,
+			`{"double":-0.12345678901234568}`,
+			`{"double":0}`,
+			`{"double":-1}`,
+			`{"double":9223372036854776000}`,
+			`{"double":-9223372036854776000}`},
+		[]Value{
+			NewDouble(0.123456789012345678901234567890),
+			NewDouble(-0.123456789012345678901234567890),
+			NewDouble(0),
+			NewDouble(-1),
+			NewDouble(9223372036854776000),
+			NewDouble(-9223372036854776000)}
+}
+
+func dateTimeJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"dateTime.iso8601":"TODO"}`,
+			`{"dateTime":"TODO"}`,
+			`{"dateTime.iso8601":""}`},
+		[]Value{
+			NewDateTime("TODO"),
+			NewDateTime("TODO"),
+			NewDateTime("")}
+}
+
+func dateTimeJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"dateTime.iso8601":"TODO"}`},
+		[]Value{
+			NewDateTime("TODO")}
+}
+
+func base64JsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"base64":"TODO"}`,
+			`{"base64":""}`},
+		[]Value{
+			NewBase64("TODO"),
+			NewBase64("")}
+}
+
+func base64JsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"base64":"TODO"}`},
+		[]Value{
+			NewBase64("TODO")}
+}
+
+func arrayJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"array":[
+      {"int":59392},
+      {"i4":-49528},
+      {"array":[{"string":"wheee"}]},
+      {"i8":1294959993}]}`},
+		[]Value{{Array: []Value{
+			NewInt(59392),
+			NewInt(-49528),
+			NewArray([]Value{NewString("wheee")}),
+			NewLong(1294959993)}}}
+}
+
+func arrayJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"int":59392}`,
+			`{"i4":-49528}`,
+			`{"array":[{"string":"wheee"}]}`,
+			`{"i8":1294959993}`},
+		[]Value{{Array: []Value{
+			NewInt(59392),
+			NewInt(-49528),
+			NewArray([]Value{NewString("wheee")}),
+			NewLong(1294959993)}}}
+}
+
+func nilJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"nil":null}`,
+			`{"ex:nil":null}`},
+		[]Value{
+			NewNil(),
+			NewNil()}
+}
+
+func nilJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"ex:nil":null}`},
+		[]Value{
+			NewNil()}
+}
+
+func byteJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"byte":255}`, //max byte
+			`{"i1":0}`,     //min byte
+			`{"ex:i1":0}`,
+			`{"byte":-1}`,
+			`{"i1":2147483647}`,     //overflow
+			`{"ex:i1":-2147483648}`, //-overflow
+			`{"byte":"invalid"}`},   //invalid
+		[]Value{
+			NewByte(255),
+			NewByte(0),
+			NewByte(0),
+			NewByte(255),
+			NewByte(255),
+			NewByte(0),
+			NewByte(0)}
+}
+
+func byteJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"ex:i1":255}`, //max byte
+			`{"ex:i1":0}`},  //min byte
+		[]Value{
+			NewByte(255),
+			NewByte(0)}
+}
+
+func floatJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"float":0.123456789012345678901234567890}`,
+			`{"ex:float":-0.123456789012345678901234567890}`,
+			`{"float":0}`,
+			`{"ex:float":0.000000}`,
+			`{"float":-1}`,
+			`{"ex:float":9223372036854775807}`,
+			`{"float":-9223372036854775808}`,
+			`{"ex:float":"invalid"}`}, //invalid
+		[]Value{
+			NewFloat(0.123456789012345678901234567890),
+			NewFloat(-0.123456789012345678901234567890),
+			NewFloat(0),
+			NewFloat(0.0),
+			NewFloat(-1),
+			NewFloat(9223372036854775807),
+			NewFloat(-9223372036854775808),
+			NewFloat(0)}
+}
+
+func floatJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"ex:float":0.12345679}`,
+			`{"ex:float":-0.12345679}`,
+			`{"ex:float":0}`,
+			`{"ex:float":-1}`},
+		[]Value{
+			NewFloat(0.12345679),
+			NewFloat(-0.12345679),
+			NewFloat(0),
+			NewFloat(-1)}
+}
+
+func longJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"i8":9223372036854775807}`,     //max int64
+			`{"ex:i8":-9223372036854775808}`, //min int64
+			`{"long":0}`,
+			`{"i8":-1}`,
+			`{"ex:i8":92233720368547758079223372036854775807}`, //overflow
+			`{"long":-92233720368547758089223372036854775808}`, //-overflow
+			`{"i8":"invalid"}`},                                //invalid
+		[]Value{
+			NewLong(-9223372036854775808),
+			NewLong(-9223372036854775808),
+			NewLong(0),
+			NewLong(-1),
+			NewLong(-9223372036854775808),
+			NewLong(-9223372036854775808),
+			NewLong(0)}
+}
+
+func longJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"ex:i8":9223372036854775807}`,  //max int64
+			`{"ex:i8":-9223372036854775808}`, //min int64
+			`{"ex:i8":0}`,
+			`{"ex:i8":-1}`},
+		[]Value{
+			NewLong(9223372036854775807),
+			NewLong(-9223372036854775808),
+			NewLong(0),
+			NewLong(-1)}
+}
+
+func shortJsonData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"short":32767}`, //max int16
+			`{"i2":-32768}`,   //min int16
+			`{"ex:i2":0}`,
+			`{"short":-1}`,
+			`{"i2":2147483647}`,     //overflow
+			`{"ex:i2":-2147483648}`, //-overflow
+			`{"short":"invalid"}`},  //invalid
+		[]Value{
+			NewShort(32767),
+			NewShort(-32768),
+			NewShort(0),
+			NewShort(-1),
+			NewShort(-1),
+			NewShort(0),
+			NewShort(0)}
+}
+
+func shortJsonValidData() (jsonDoc []string, values []Value) {
+	return []string{
+			`{"ex:i2":32767}`,  //max int16
+			`{"ex:i2":-32768}`, //min int16
+			`{"ex:i2":0}`,
+			`{"ex:i2":-1}`},
+		[]Value{
+			NewShort(32767),
+			NewShort(-32768),
+			NewShort(0),
+			NewShort(-1)}
+}
+
+func mixedArrayJsonData() (jsonDoc []string, values []Value) {
+	return []string{`{"array":[
+              {"int":485838},
+              {"i4":58388},
+              {"i8":-4829485744},
+              {"boolean":true},
+              {"string":"Hello World & \"You\"!"}]}`},
+		[]Value{{Array: []Value{
+			NewInt(485838),
+			NewInt(58388),
+			NewLong(-4829485744),
+			NewBoolean(true),
+			NewString("Hello World & \"You\"!")}}}
+}
+
+func TestIntegerJsonParam(t *testing.T) {
+	jsonDoc, values := integerJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestBooleanJsonParam(t *testing.T) {
+	jsonDoc, values := booleanJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestStringJsonParam(t *testing.T) {
+	jsonDoc, values := stringJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestDoubleJsonParam(t *testing.T) {
+	jsonDoc, values := doubleJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestDateTimeJsonParam(t *testing.T) {
+	jsonDoc, values := dateTimeJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestBase64JsonParam(t *testing.T) {
+	jsonDoc, values := base64JsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestArrayJsonParam(t *testing.T) {
+	jsonDoc, values := arrayJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestNilJsonParam(t *testing.T) {
+	jsonDoc, values := nilJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestByteJsonParam(t *testing.T) {
+	jsonDoc, values := byteJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestFloatJsonParam(t *testing.T) {
+	jsonDoc, values := floatJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestLongJsonParam(t *testing.T) {
+	jsonDoc, values := longJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestShortJsonParam(t *testing.T) {
+	jsonDoc, values := shortJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func TestMixedArrayJsonParam(t *testing.T) {
+	jsonDoc, values := mixedArrayJsonData()
+	runParseJsonRequest(jsonDoc, values, t)
+}
+
+func runParseJsonRequest(params []string, expecteds []Value, t *testing.T) {
+	prefix := "\n" + `{"methodName":"helloMethod","params":[`
+	suffix := "\n" + `]}`
+
+	json := prefix
+	json += strings.Join(params, ",")
+	json += suffix
+
+	t.Logf("Expected (JSON): %s", json)
+
+	buf := bytes.NewReader([]byte(json))
+
+	methodName, actuals, err := ParseJsonRequest(buf)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s\n", err)
+	}
+
+	if methodName != "helloMethod" {
+		t.Fatalf("Expected helloMethod, got %s\n", methodName)
+	}
+
+	if len(actuals) != len(expecteds) {
+		t.Fatalf("Expected count %v values, got %v", len(expecteds), len(actuals))
+	}
+
+	t.Logf("===========================\n")
+	t.Logf("Expected: %s\n", printValueArray(expecteds))
+	t.Logf("---------------------------\n")
+	t.Logf("Actual: %s\n", printValueArray(actuals))
+	t.Logf("===========================\n")
+
+	for i, expected := range expecteds {
+		actual := actuals[i]
+
+		compareValue(&expected, &actual, t)
+	}
+}
+
+/*
+func TestParseJsonRequest(t *testing.T) {
+  json := `{"methodName":"system.client_version"}`
+  body := bytes.NewReader([]byte(json))
+
+  methodName, params, err := ParseJsonRequest(body)
+
+  if (err != nil) {
+    t.Fatalf("Unexpected error: %s\n", err)
+  }
+  if methodName != "system.client_version" {
+    t.Fatalf("Expected %s, got %s\n", "system.client_version", methodName)
+  }
+  if params != nil {
+    t.Fatalf("Expected no params\n")
+  }
+}
+*/
+
+/*
+func TestParseJsonRequestStringParams(t *testing.T) {
+  json := `{"methodName": "d.multicall",
+            "params": [
+              {"string": "main"},
+              {"string": "d.base_filename="},
+              {"string": "d.base_path="}]}`
+  body := bytes.NewReader([]byte(json))
+
+  methodName, params, err := ParseJsonRequest(body)
+
+  if (err != nil) {
+    t.Fatalf("Unexpected error: %s\n", err)
+  }
+  if methodName != "d.multicall" {
+    t.Fatalf("Expected %s, got %s\n", "d.multicall", methodName)
+  }
+  if params == nil {
+    t.Fatalf("Expected params\n")
+  }
+  if len(params) != 3 {
+    t.Fatalf("Expected 3 params, got %d\n", len(params))
+  }
+}
+*/
