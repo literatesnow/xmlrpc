@@ -6,9 +6,209 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
+var NZ = time.FixedZone("NZ", 12*3600)
+var ZZ time.Time
+
 // Both
+
+func createCompareRequest(methodName string, values []Value, expected string, t *testing.T) {
+	actual := string(CreateRequest(methodName, values))
+
+	if actual != expected {
+		t.Fatalf("Expected document: %s\ngot: %s\n", expected, actual)
+	}
+}
+
+func parseRequest(params []string, expecteds []Value, t *testing.T) {
+	prefix := "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?><methodResponse><params>"
+	suffix := "\n</params></methodResponse>"
+
+	xml := prefix
+	for _, param := range params {
+		xml += "\n<param><value>" + param + "</value></param>"
+	}
+	xml += suffix
+
+	t.Logf("Expected (XML): %s", xml)
+
+	buf := bytes.NewBufferString(xml)
+	actuals := ParseResponse(buf)
+
+	if len(actuals) != len(expecteds) {
+		t.Fatalf("Expected count %v values, got %v", len(expecteds), len(actuals))
+	}
+
+	t.Logf("===========================\n")
+	t.Logf("Expected: %s\n", printValueArray(expecteds))
+	t.Logf("---------------------------\n")
+	t.Logf("Actual: %s\n", printValueArray(actuals))
+	t.Logf("===========================\n")
+
+	for i, expected := range expecteds {
+		actual := actuals[i]
+
+		compareValue(&expected, &actual, t)
+	}
+}
+
+func runParseJsonRequest(params []string, expecteds []Value, t *testing.T) {
+	prefix := "\n" + `{"methodName":"helloMethod","params":[`
+	suffix := "\n" + `]}`
+
+	json := prefix
+	json += strings.Join(params, ",")
+	json += suffix
+
+	t.Logf("Expected (JSON): %s", json)
+
+	buf := bytes.NewReader([]byte(json))
+
+	methodName, actuals, err := ParseJsonRequest(buf)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s\n", err)
+	}
+
+	if methodName != "helloMethod" {
+		t.Fatalf("Expected helloMethod, got %s\n", methodName)
+	}
+
+	if len(actuals) != len(expecteds) {
+		t.Fatalf("Expected count %v values, got %v", len(expecteds), len(actuals))
+	}
+
+	t.Logf("===========================\n")
+	t.Logf("Expected: %s\n", printValueArray(expecteds))
+	t.Logf("---------------------------\n")
+	t.Logf("Actual: %s\n", printValueArray(actuals))
+	t.Logf("===========================\n")
+
+	for i, expected := range expecteds {
+		actual := actuals[i]
+
+		compareValue(&expected, &actual, t)
+	}
+}
+
+func compareValue(expected *Value, actual *Value, t *testing.T) {
+	if expected.Int != nil {
+		if actual.Int == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Int)
+		} else if *expected.Int != *actual.Int {
+			t.Errorf("Expected %#v, got %#v", *expected.Int, *actual.Int)
+		}
+		return
+	}
+
+	if expected.Boolean != nil {
+		if actual.Boolean == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Boolean)
+		} else if *expected.Boolean != *actual.Boolean {
+			t.Errorf("Expected %#v, got %#v", *expected.Boolean, *actual.Boolean)
+		}
+		return
+	}
+
+	if expected.String != nil {
+		if actual.String == nil {
+			t.Errorf("Expected %#v, got nil", *expected.String)
+		} else if *expected.String != *actual.String {
+			t.Errorf("Expected %#v, got %#v", *expected.String, *actual.String)
+		}
+		return
+	}
+
+	if expected.Double != nil {
+		if actual.Double == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Double)
+		} else if *expected.Double != *actual.Double {
+			t.Errorf("Expected %#v, got %#v", *expected.Double, *actual.Double)
+		}
+		return
+	}
+
+	if expected.DateTime != nil {
+		if actual.DateTime == nil {
+			t.Errorf("Expected %#v, got nil", *expected.DateTime)
+		} else if !(*expected.DateTime).Equal(*actual.DateTime) {
+			t.Errorf("Expected %#v, got %#v", *expected.DateTime, *actual.DateTime)
+		}
+		return
+	}
+
+	if expected.Base64 != nil {
+		if actual.Base64 == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Base64)
+		} else if *expected.Base64 != *actual.Base64 {
+			t.Errorf("Expected %#v, got %#v", *expected.Base64, *actual.Base64)
+		}
+		return
+	}
+
+	if expected.Array != nil {
+		if len(expected.Array) != len(actual.Array) {
+			t.Fatalf("Expected values length %d, got %d", len(expected.Array), len(actual.Array))
+		}
+
+		for i, expectedValue := range expected.Array {
+			actualValue := actual.Array[i]
+			compareValue(&expectedValue, &actualValue, t)
+		}
+
+		return
+	}
+
+	//Extensions
+
+	if expected.Nil != nil {
+		if actual.Nil == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Nil)
+		} else if *expected.Nil != *actual.Nil {
+			t.Errorf("Expected %#v, got %#v", *expected.Nil, *actual.Nil)
+		}
+		return
+	}
+
+	if expected.Byte != nil {
+		if actual.Byte == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Byte)
+		} else if *expected.Byte != *actual.Byte {
+			t.Errorf("Expected %#v, got %#v", *expected.Byte, *actual.Byte)
+		}
+		return
+	}
+
+	if expected.Float != nil {
+		if actual.Float == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Float)
+		} else if *expected.Float != *actual.Float {
+			t.Errorf("Expected %#v, got %#v", *expected.Float, *actual.Float)
+		}
+		return
+	}
+
+	if expected.Long != nil {
+		if actual.Long == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Long)
+		} else if *expected.Long != *actual.Long {
+			t.Errorf("Expected %#v, got %#v", *expected.Long, *actual.Long)
+		}
+		return
+	}
+
+	if expected.Short != nil {
+		if actual.Short == nil {
+			t.Errorf("Expected %#v, got nil", *expected.Short)
+		} else if *expected.Short != *actual.Short {
+			t.Errorf("Expected %#v, got %#v", *expected.Short, *actual.Short)
+		}
+		return
+	}
+
+	t.Fatalf("Nothing matched while comparing\n")
+}
 
 func printValueArray(values []Value) (str string) {
 	if values == nil {
@@ -20,6 +220,14 @@ func printValueArray(values []Value) (str string) {
 	}
 
 	return str
+}
+
+func formatParamValues(param []string) (paramsXml string) {
+	paramsXml = ""
+	for _, p := range param {
+		paramsXml += "<param><value>" + p + "</value></param>"
+	}
+	return paramsXml
 }
 
 // XML
@@ -176,20 +384,22 @@ func doubleValidData() (xmlDoc []string, values []Value) {
 
 func dateTimeData() (xmlDoc []string, values []Value) {
 	return []string{
-			"<dateTime.iso8601>TODO</dateTime.iso8601>",
-			"<dateTime>TODO</dateTime>",
+			"<dateTime.iso8601>2016-04-07T21:13:58+1200</dateTime.iso8601>",
+			"<dateTime8601>2016-04-07T21:13:58+1200</dateTime8601>",
+			"<dateTime>2016-04-07T21:13:58+1200</dateTime>",
 			"<dateTime.iso8601></dateTime.iso8601>"},
 		[]Value{
-			NewDateTime("TODO"),
-			NewDateTime("TODO"),
-			NewDateTime("")}
+			NewDateTime(time.Date(2016, 4, 7, 21, 13, 58, 0, NZ)),
+			NewDateTime(time.Date(2016, 4, 7, 21, 13, 58, 0, NZ)),
+			NewDateTime(time.Date(2016, 4, 7, 21, 13, 58, 0, NZ)),
+			NewDateTime(ZZ)}
 }
 
 func dateTimeValidData() (xmlDoc []string, values []Value) {
 	return []string{
-			"<dateTime.iso8601>TODO</dateTime.iso8601>"},
+			"<dateTime.iso8601>2016-04-07T21:13:58+1200</dateTime.iso8601>"},
 		[]Value{
-			NewDateTime("TODO")}
+			NewDateTime(time.Date(2016, 4, 7, 21, 13, 58, 0, NZ))}
 }
 
 func base64Data() (xmlDoc []string, values []Value) {
@@ -465,14 +675,6 @@ func TestMixedArrayParam(t *testing.T) {
 	parseRequest(xmlDoc, values, t)
 }
 
-func formatParamValues(param []string) (paramsXml string) {
-	paramsXml = ""
-	for _, p := range param {
-		paramsXml += "<param><value>" + p + "</value></param>"
-	}
-	return paramsXml
-}
-
 func TestCreateRequest(t *testing.T) {
 	expected := xml.Header +
 		"<methodCall><methodName>Calling</methodName></methodCall>"
@@ -536,7 +738,7 @@ func TestCreateRequestDateTimeParam(t *testing.T) {
 }
 
 func TestCreateRequestBase64Param(t *testing.T) {
-	xmlValues, values := dateTimeValidData()
+	xmlValues, values := base64ValidData()
 
 	expected := xml.Header +
 		"<methodCall><methodName>Base64 Test</methodName><params>" +
@@ -610,164 +812,6 @@ func TestCreateRequestShortParam(t *testing.T) {
 		"</params></methodCall>"
 
 	createCompareRequest("Short Test", values, expected, t)
-}
-
-func createCompareRequest(methodName string, values []Value, expected string, t *testing.T) {
-	actual := string(CreateRequest(methodName, values))
-
-	if actual != expected {
-		t.Fatalf("Expected document: %s\ngot: %s\n", expected, actual)
-	}
-}
-
-func parseRequest(params []string, expecteds []Value, t *testing.T) {
-	prefix := "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?><methodResponse><params>"
-	suffix := "\n</params></methodResponse>"
-
-	xml := prefix
-	for _, param := range params {
-		xml += "\n<param><value>" + param + "</value></param>"
-	}
-	xml += suffix
-
-	t.Logf("Expected (XML): %s", xml)
-
-	buf := bytes.NewBufferString(xml)
-	actuals := ParseResponse(buf)
-
-	if len(actuals) != len(expecteds) {
-		t.Fatalf("Expected count %v values, got %v", len(expecteds), len(actuals))
-	}
-
-	t.Logf("===========================\n")
-	t.Logf("Expected: %s\n", printValueArray(expecteds))
-	t.Logf("---------------------------\n")
-	t.Logf("Actual: %s\n", printValueArray(actuals))
-	t.Logf("===========================\n")
-
-	for i, expected := range expecteds {
-		actual := actuals[i]
-
-		compareValue(&expected, &actual, t)
-	}
-}
-
-func compareValue(expected *Value, actual *Value, t *testing.T) {
-	if expected.Int != nil {
-		if actual.Int == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Int)
-		} else if *expected.Int != *actual.Int {
-			t.Errorf("Expected %#v, got %#v", *expected.Int, *actual.Int)
-		}
-		return
-	}
-
-	if expected.Boolean != nil {
-		if actual.Boolean == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Boolean)
-		} else if *expected.Boolean != *actual.Boolean {
-			t.Errorf("Expected %#v, got %#v", *expected.Boolean, *actual.Boolean)
-		}
-		return
-	}
-
-	if expected.String != nil {
-		if actual.String == nil {
-			t.Errorf("Expected %#v, got nil", *expected.String)
-		} else if *expected.String != *actual.String {
-			t.Errorf("Expected %#v, got %#v", *expected.String, *actual.String)
-		}
-		return
-	}
-
-	if expected.Double != nil {
-		if actual.Double == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Double)
-		} else if *expected.Double != *actual.Double {
-			t.Errorf("Expected %#v, got %#v", *expected.Double, *actual.Double)
-		}
-		return
-	}
-
-	if expected.DateTime != nil {
-		if actual.DateTime == nil {
-			t.Errorf("Expected %#v, got nil", *expected.DateTime)
-		} else if *expected.DateTime != *actual.DateTime {
-			t.Errorf("Expected %#v, got %#v", *expected.DateTime, *actual.DateTime)
-		}
-		return
-	}
-
-	if expected.Base64 != nil {
-		if actual.Base64 == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Base64)
-		} else if *expected.Base64 != *actual.Base64 {
-			t.Errorf("Expected %#v, got %#v", *expected.Base64, *actual.Base64)
-		}
-		return
-	}
-
-	if expected.Array != nil {
-		if len(expected.Array) != len(actual.Array) {
-			t.Fatalf("Expected values length %d, got %d", len(expected.Array), len(actual.Array))
-		}
-
-		for i, expectedValue := range expected.Array {
-			actualValue := actual.Array[i]
-			compareValue(&expectedValue, &actualValue, t)
-		}
-
-		return
-	}
-
-	//Extensions
-
-	if expected.Nil != nil {
-		if actual.Nil == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Nil)
-		} else if *expected.Nil != *actual.Nil {
-			t.Errorf("Expected %#v, got %#v", *expected.Nil, *actual.Nil)
-		}
-		return
-	}
-
-	if expected.Byte != nil {
-		if actual.Byte == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Byte)
-		} else if *expected.Byte != *actual.Byte {
-			t.Errorf("Expected %#v, got %#v", *expected.Byte, *actual.Byte)
-		}
-		return
-	}
-
-	if expected.Float != nil {
-		if actual.Float == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Float)
-		} else if *expected.Float != *actual.Float {
-			t.Errorf("Expected %#v, got %#v", *expected.Float, *actual.Float)
-		}
-		return
-	}
-
-	if expected.Long != nil {
-		if actual.Long == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Long)
-		} else if *expected.Long != *actual.Long {
-			t.Errorf("Expected %#v, got %#v", *expected.Long, *actual.Long)
-		}
-		return
-	}
-
-	if expected.Short != nil {
-		if actual.Short == nil {
-			t.Errorf("Expected %#v, got nil", *expected.Short)
-		} else if *expected.Short != *actual.Short {
-			t.Errorf("Expected %#v, got %#v", *expected.Short, *actual.Short)
-		}
-		return
-	}
-
-	t.Fatalf("Nothing matched while comparing\n")
 }
 
 // JSON
@@ -926,20 +970,20 @@ func doubleJsonValidData() (jsonDoc []string, values []Value) {
 
 func dateTimeJsonData() (jsonDoc []string, values []Value) {
 	return []string{
-			`{"dateTime.iso8601":"TODO"}`,
-			`{"dateTime":"TODO"}`,
+			`{"dateTime.iso8601":"2016-04-07T21:13:58+1200"}`,
+			`{"dateTime":"2016-04-07T21:13:58+1200"}`,
 			`{"dateTime.iso8601":""}`},
 		[]Value{
-			NewDateTime("TODO"),
-			NewDateTime("TODO"),
-			NewDateTime("")}
+			NewDateTime(time.Date(2016, 4, 7, 21, 13, 58, 0, NZ)),
+			NewDateTime(time.Date(2016, 4, 7, 21, 13, 58, 0, NZ)),
+			NewDateTime(ZZ)}
 }
 
 func dateTimeJsonValidData() (jsonDoc []string, values []Value) {
 	return []string{
-			`{"dateTime.iso8601":"TODO"}`},
+			`{"dateTime.iso8601":"2016-04-07T21:13:58+1200"}`},
 		[]Value{
-			NewDateTime("TODO")}
+			NewDateTime(time.Date(2016, 4, 7, 21, 13, 58, 0, NZ))}
 }
 
 func base64JsonData() (jsonDoc []string, values []Value) {
@@ -1205,44 +1249,6 @@ func TestShortJsonParam(t *testing.T) {
 func TestMixedArrayJsonParam(t *testing.T) {
 	jsonDoc, values := mixedArrayJsonData()
 	runParseJsonRequest(jsonDoc, values, t)
-}
-
-func runParseJsonRequest(params []string, expecteds []Value, t *testing.T) {
-	prefix := "\n" + `{"methodName":"helloMethod","params":[`
-	suffix := "\n" + `]}`
-
-	json := prefix
-	json += strings.Join(params, ",")
-	json += suffix
-
-	t.Logf("Expected (JSON): %s", json)
-
-	buf := bytes.NewReader([]byte(json))
-
-	methodName, actuals, err := ParseJsonRequest(buf)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s\n", err)
-	}
-
-	if methodName != "helloMethod" {
-		t.Fatalf("Expected helloMethod, got %s\n", methodName)
-	}
-
-	if len(actuals) != len(expecteds) {
-		t.Fatalf("Expected count %v values, got %v", len(expecteds), len(actuals))
-	}
-
-	t.Logf("===========================\n")
-	t.Logf("Expected: %s\n", printValueArray(expecteds))
-	t.Logf("---------------------------\n")
-	t.Logf("Actual: %s\n", printValueArray(actuals))
-	t.Logf("===========================\n")
-
-	for i, expected := range expecteds {
-		actual := actuals[i]
-
-		compareValue(&expected, &actual, t)
-	}
 }
 
 /*
