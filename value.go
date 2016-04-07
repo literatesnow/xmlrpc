@@ -4,26 +4,31 @@ import (
 	"encoding/xml"
 	"strconv"
 	"strings"
+	"time"
 
 	"bitbucket.org/unrulyknight/xmlrpc/util"
 )
 
+const (
+	iso8601 = "2006-01-02T15:04:05-0700"
+)
+
 type Value struct {
-	Int      *int32 //i4
-	Boolean  *bool
-	String   *string
-	Double   *float64
-	DateTime *string //dateTime.iso8601
-	Base64   *string
-	Array    []Value
+	Int      *int32     `json:"int,omitempty"` //i4
+	Boolean  *bool      `json:"boolean,omitempty"`
+	String   *string    `json:"string,omitempty"`
+	Double   *float64   `json:"double,omitempty"`
+	DateTime *time.Time `json:"dateTime8601,omitempty"` //dateTime.iso8601
+	Base64   *string    `json:"base64,omitempty"`
+	Array    []Value    `json:"array,omitempty"`
 	//Struct - unsupported
 
 	//Extensions
-	Nil   *bool    //nil, ex:nil
-	Byte  *byte    //i1, ex:i1
-	Float *float32 //float, ex:float
-	Long  *int64   //i8, ex:i8
-	Short *int16   //i2, ex:i2
+	Nil   *bool    `json:"nil,omitempty"`   //nil, ex:nil
+	Byte  *byte    `json:"i1,omitempty"`    //i1, ex:i1
+	Float *float32 `json:"float,omitempty"` //float, ex:float
+	Long  *int64   `json:"i8,omitempty"`    //i8, ex:i8
+	Short *int16   `json:"i2,omitempty"`    //i2, ex:i2
 	//Dom - unsupported
 }
 
@@ -39,7 +44,7 @@ func NewString(val string) Value {
 func NewDouble(val float64) Value {
 	return Value{Double: &val}
 }
-func NewDateTime(val string) Value {
+func NewDateTime(val time.Time) Value {
 	return Value{DateTime: &val}
 }
 func NewBase64(val string) Value {
@@ -76,7 +81,7 @@ func (v *Value) FromString(str string) {
 	} else if v.Double != nil {
 		*v.Double, _ = strconv.ParseFloat(str, 64)
 	} else if v.DateTime != nil {
-		v.DateTime = &str
+		*v.DateTime, _ = time.Parse(iso8601, str)
 	} else if v.Base64 != nil {
 		v.Base64 = &str
 	} else if v.Array != nil {
@@ -135,8 +140,8 @@ func (v *Value) FromRpc(name string) {
 	case "double":
 		var val float64
 		v.Double = &val
-	case "dateTime", "dateTime.iso8601":
-		var val string
+	case "dateTime", "dateTime8601", "dateTime.iso8601":
+		var val time.Time
 		v.DateTime = &val
 	case "base64":
 		var val string
@@ -175,7 +180,7 @@ func (v *Value) asString() (dataType string, text string) {
 	} else if v.Double != nil {
 		return "double", strconv.FormatFloat(*v.Double, 'f', -1, 64)
 	} else if v.DateTime != nil {
-		return "dateTime.iso8601", *v.DateTime
+		return "dateTime.iso8601", (*v.DateTime).Format(iso8601)
 	} else if v.Base64 != nil {
 		return "base64", *v.Base64
 	} else if v.Nil != nil {
