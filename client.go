@@ -18,7 +18,7 @@ const (
 	squareRight = json.Delim(']')
 )
 
-func CreateRequest(methodName string, values []Value) (document []byte) {
+func CreateRequest(methodName string, params []Value) (document []byte) {
 	var buf bytes.Buffer
 
 	writer := bufio.NewWriter(&buf)
@@ -30,7 +30,7 @@ func CreateRequest(methodName string, values []Value) (document []byte) {
 	util.Start(encoder, "methodName")
 	util.CharData(encoder, methodName)
 	util.End(encoder, "methodName")
-	xmlParams(encoder, values)
+	xmlParams(encoder, params)
 	util.End(encoder, "methodCall")
 
 	encoder.Flush()
@@ -38,34 +38,32 @@ func CreateRequest(methodName string, values []Value) (document []byte) {
 	return buf.Bytes()
 }
 
-func ParseResponse(response *bytes.Buffer) (values []Value) {
+func ParseResponse(response *bytes.Buffer) (value *Value, err error) {
 	decoder := xml.NewDecoder(response)
-	values = make([]Value, 0)
 
 	if !nextElem(decoder, "methodResponse") ||
-		!nextElem(decoder, "params") {
-		return values
+		!nextElem(decoder, "params") ||
+		!nextElem(decoder, "param") {
+		return nil, errors.New("Invalid response")
 	}
 
-	for {
-		if !nextElem(decoder, "param") {
-			break
-		}
-
-		if value := parseValue(decoder); value != nil {
-			values = append(values, *value)
-		}
+	value, err = parseValue(decoder)
+	if err != nil {
+		return nil, err
 	}
 
-	return values
+	return value, nil
 }
 
-func parseValue(decoder *xml.Decoder) (value *Value) {
+func parseValue(decoder *xml.Decoder) (value *Value, err error) {
 	value = nil
 
 	for {
 		token, err := decoder.Token()
-		if token == nil || err != nil {
+		if err != nil {
+			return nil, err
+		}
+		if token == nil {
 			break
 		}
 
@@ -73,15 +71,17 @@ func parseValue(decoder *xml.Decoder) (value *Value) {
 		case xml.CharData:
 			parseCharData(value, string(elem))
 		case xml.StartElement:
-			parseStartElement(decoder, &value, elem.Name.Local)
+			if err = parseStartElement(decoder, &value, elem.Name.Local); err != nil {
+				return nil, err
+			}
 		case xml.EndElement:
 			if elem.Name.Local == "value" || value == nil {
-				return value
+				return value, nil
 			}
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func parseCharData(value *Value, str string) {
@@ -92,36 +92,46 @@ func parseCharData(value *Value, str string) {
 	value.FromString(str)
 }
 
-func parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) {
+func parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) (err error) {
 	if elemName == "value" {
 		*valuePtr = &Value{}
-		return
+		return nil
 	}
 
 	if *valuePtr == nil {
-		return
+		return nil
 	}
 
 	value := *valuePtr
 	value.FromRpc(elemName)
 
 	if value.Array != nil {
-		parseValueArray(decoder, value)
+		if err = parseValueArray(decoder, value); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func parseValueArray(decoder *xml.Decoder, value *Value) {
+func parseValueArray(decoder *xml.Decoder, value *Value) (err error) {
 	if !nextElem(decoder, "data") {
-		return //TODO return error
+		return errors.New("Unexpected element")
 	}
 
 	for {
-		if val := parseValue(decoder); val != nil {
+		val, err := parseValue(decoder)
+		if err != nil {
+			return err
+		}
+		if val != nil {
 			value.Array = append(value.Array, *val)
 		} else {
 			break
 		}
 	}
+
+	return nil
 }
 
 func nextElem(decoder *xml.Decoder, name string) (found bool) {

@@ -14,43 +14,45 @@ var ZZ time.Time
 
 // Both
 
-func createCompareRequest(methodName string, values []Value, expected string, t *testing.T) {
-	actual := string(CreateRequest(methodName, values))
+func createCompareRequest(methodName string, params []Value, expected string, t *testing.T) {
+	actual := string(CreateRequest(methodName, params))
 
 	if actual != expected {
 		t.Fatalf("Expected document: %s\ngot: %s\n", expected, actual)
 	}
 }
 
-func parseRequest(params []string, expecteds []Value, t *testing.T) {
+func runParseXmlResponse(params []string, expecteds []Value, t *testing.T) {
+	if len(params) != len(expecteds) {
+		t.Fatalf("Expected params count %v, got %v", len(params), len(expecteds))
+	}
+
 	prefix := "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?><methodResponse><params>"
 	suffix := "\n</params></methodResponse>"
 
-	xml := prefix
-	for _, param := range params {
-		xml += "\n<param><value>" + param + "</value></param>"
-	}
-	xml += suffix
+	for i, param := range params {
+		expected := expecteds[i]
 
-	t.Logf("Expected (XML): %s", xml)
+		xml := prefix
+		xml += "<param><value>" + param + "</value></param>"
+		xml += suffix
 
-	buf := bytes.NewBufferString(xml)
-	actuals := ParseResponse(buf)
+		t.Logf("Expected (XML): %s", xml)
 
-	if len(actuals) != len(expecteds) {
-		t.Fatalf("Expected count %v values, got %v", len(expecteds), len(actuals))
-	}
+		buf := bytes.NewBufferString(xml)
+		actual, err := ParseResponse(buf)
 
-	t.Logf("===========================\n")
-	t.Logf("Expected: %s\n", printValueArray(expecteds))
-	t.Logf("---------------------------\n")
-	t.Logf("Actual: %s\n", printValueArray(actuals))
-	t.Logf("===========================\n")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
 
-	for i, expected := range expecteds {
-		actual := actuals[i]
+		t.Logf("===========================\n")
+		t.Logf("Expected: %s\n", printValue(&expected))
+		t.Logf("---------------------------\n")
+		t.Logf("Actual: %s\n", printValue(actual))
+		t.Logf("===========================\n")
 
-		compareValue(&expected, &actual, t)
+		compareValue(&expected, actual, t)
 	}
 }
 
@@ -93,6 +95,13 @@ func runParseJsonRequest(params []string, expecteds []Value, t *testing.T) {
 }
 
 func compareValue(expected *Value, actual *Value, t *testing.T) {
+	if expected == nil {
+		t.Fatalf("Expected was nil")
+	}
+	if actual == nil {
+		t.Fatalf("Actual was nil")
+	}
+
 	if expected.Int != nil {
 		if actual.Int == nil {
 			t.Errorf("Expected %#v, got nil", *expected.Int)
@@ -208,6 +217,14 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 	}
 
 	t.Fatalf("Nothing matched while comparing\n")
+}
+
+func printValue(value *Value) (str string) {
+	if value == nil {
+		return "(nil)"
+	}
+
+	return (*value).Print()
 }
 
 func printValueArray(values []Value) (str string) {
@@ -612,67 +629,67 @@ func mixedArrayData() (xmlDoc []string, values []Value) {
 
 func TestIntegerParam(t *testing.T) {
 	xmlDoc, values := integerData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestBooleanParam(t *testing.T) {
 	xmlDoc, values := booleanData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestStringParam(t *testing.T) {
 	xmlDoc, values := stringData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestDoubleParam(t *testing.T) {
 	xmlDoc, values := doubleData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestDateTimeParam(t *testing.T) {
 	xmlDoc, values := dateTimeData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestBase64Param(t *testing.T) {
 	xmlDoc, values := base64Data()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestArrayParam(t *testing.T) {
 	xmlDoc, values := arrayData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestNilParam(t *testing.T) {
 	xmlDoc, values := nilData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestByteParam(t *testing.T) {
 	xmlDoc, values := byteData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestFloatParam(t *testing.T) {
 	xmlDoc, values := floatData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestLongParam(t *testing.T) {
 	xmlDoc, values := longData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestShortParam(t *testing.T) {
 	xmlDoc, values := shortData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestMixedArrayParam(t *testing.T) {
 	xmlDoc, values := mixedArrayData()
-	parseRequest(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, t)
 }
 
 func TestCreateRequest(t *testing.T) {
