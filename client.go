@@ -41,10 +41,41 @@ func CreateRequest(methodName string, params []Value) (document []byte) {
 func ParseResponse(response *bytes.Buffer) (value *Value, err error) {
 	decoder := xml.NewDecoder(response)
 
-	if !nextElem(decoder, "methodResponse") ||
-		!nextElem(decoder, "params") ||
-		!nextElem(decoder, "param") {
-		return nil, errors.New("Invalid response")
+	var name *string
+
+	if name, err = nextElem(decoder); err == nil && *name != "methodResponse" {
+		err = errors.New("Expecting methodResponse element")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if name, err = nextElem(decoder); err == nil {
+		switch *name {
+		case "fault":
+			value, err = parseFault(decoder)
+		case "params":
+			value, err = parseParams(decoder)
+		default:
+			return nil, errors.New("Unexpected element")
+		}
+	}
+
+	return value, err
+}
+
+func parseFault(decoder *xml.Decoder) (value *Value, err error) {
+	return parseValue(decoder)
+}
+
+func parseParams(decoder *xml.Decoder) (value *Value, err error) {
+	if name, err := nextElem(decoder); err == nil && *name != "param" {
+		err = errors.New("Unexpected element")
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	value, err = parseValue(decoder)
@@ -57,39 +88,37 @@ func ParseResponse(response *bytes.Buffer) (value *Value, err error) {
 
 func parseValue(decoder *xml.Decoder) (value *Value, err error) {
 	value = nil
+	hasChar := false
 
 	for {
 		token, err := decoder.Token()
 		if err != nil {
 			return nil, err
 		}
+
 		if token == nil {
 			break
 		}
 
 		switch elem := token.(type) {
 		case xml.CharData:
-			parseCharData(value, string(elem))
+			if value != nil && hasChar {
+				value.FromString(string(elem))
+			}
 		case xml.StartElement:
+			hasChar = true
 			if err = parseStartElement(decoder, &value, elem.Name.Local); err != nil {
 				return nil, err
 			}
 		case xml.EndElement:
+			hasChar = false
 			if elem.Name.Local == "value" || value == nil {
 				return value, nil
 			}
 		}
 	}
 
-	return nil, nil
-}
-
-func parseCharData(value *Value, str string) {
-	if value == nil {
-		return
-	}
-
-	value.FromString(str)
+	return value, nil
 }
 
 func parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) (err error) {
@@ -103,10 +132,18 @@ func parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) 
 	}
 
 	value := *valuePtr
-	value.FromRpc(elemName)
+	value.String = nil
+
+	if err = value.FromRpc(elemName); err != nil {
+		return err
+	}
 
 	if value.Array != nil {
 		if err = parseValueArray(decoder, value); err != nil {
+			return err
+		}
+	} else if value.Struct != nil {
+		if err = parseValueStruct(decoder, value); err != nil {
 			return err
 		}
 	}
@@ -115,8 +152,12 @@ func parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) 
 }
 
 func parseValueArray(decoder *xml.Decoder, value *Value) (err error) {
-	if !nextElem(decoder, "data") {
-		return errors.New("Unexpected element")
+	if name, err := nextElem(decoder); err == nil && *name != "data" {
+		err = errors.New("Unexpected element")
+	}
+
+	if err != nil {
+		return err
 	}
 
 	for {
@@ -134,22 +175,80 @@ func parseValueArray(decoder *xml.Decoder, value *Value) (err error) {
 	return nil
 }
 
-func nextElem(decoder *xml.Decoder, name string) (found bool) {
+func parseValueStruct(decoder *xml.Decoder, value *Value) (err error) {
+	var member *Member
+	var isName bool = false
+
 	for {
 		token, err := decoder.Token()
-		if token == nil || err != nil {
-			return false
+		if err != nil {
+			return err
+		}
+
+		if token == nil {
+			break
 		}
 
 		switch elem := token.(type) {
+		case xml.CharData:
+			if member != nil && isName {
+				member.Name = string(elem)
+				isName = false
+			}
 		case xml.StartElement:
-			if elem.Name.Local == name {
-				return true
+			switch elem.Name.Local {
+			case "member":
+				member = &Member{}
+			case "name":
+				if member == nil {
+					return errors.New("Bad member")
+				}
+				isName = true
+			}
+		case xml.EndElement:
+			switch elem.Name.Local {
+			case "name":
+				if member != nil {
+					val, err := parseValue(decoder)
+					if err != nil {
+						return err
+					}
+					if val != nil {
+						member.Value = *val
+					}
+				}
+			case "member":
+				value.Struct = append(value.Struct, *member)
+				member = nil
+				isName = false
+			case "struct":
+				return nil
+			default:
+				return errors.New("Unhandled struct element " + elem.Name.Local)
 			}
 		}
 	}
 
-	return false
+	return nil
+}
+
+func nextElem(decoder *xml.Decoder) (name *string, err error) {
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		if token == nil {
+			return nil, errors.New("Expecting element start")
+		}
+
+		switch elem := token.(type) {
+		case xml.StartElement:
+			return &elem.Name.Local, nil
+		}
+	}
+
+	return nil, errors.New("Expecting element")
 }
 
 func xmlParams(encoder *xml.Encoder, values []Value) {
@@ -265,7 +364,10 @@ func parseJsonValues(decoder *json.Decoder) (values []Value, err error) {
 		} else if val != nil {
 			if !hasType {
 				if str, ok := token.(string); ok {
-					val.FromRpc(str)
+					if err = val.FromRpc(str); err != nil {
+						return nil, err
+					}
+
 					hasType = true
 
 					if val.Array != nil {

@@ -2,6 +2,7 @@ package xmlrpc
 
 import (
 	"encoding/xml"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,13 @@ const (
 	iso8601 = "2006-01-02T15:04:05-0700"
 )
 
+//Represents xmlrpc <member> element (in <struct>)
+type Member struct {
+	Name  string `json:"name"`
+	Value Value  `json:"value"`
+}
+
+//Represents xmlrpc <value> element
 type Value struct {
 	Int      *int32     `json:"int,omitempty"` //i4
 	Boolean  *bool      `json:"boolean,omitempty"`
@@ -21,14 +29,12 @@ type Value struct {
 	DateTime *time.Time `json:"dateTime8601,omitempty"` //dateTime.iso8601
 	Base64   *string    `json:"base64,omitempty"`
 	Array    []Value    `json:"array,omitempty"`
-	//Struct - unsupported
-
-	//Extensions
-	Nil   *bool    `json:"nil,omitempty"`   //nil, ex:nil
-	Byte  *byte    `json:"i1,omitempty"`    //i1, ex:i1
-	Float *float32 `json:"float,omitempty"` //float, ex:float
-	Long  *int64   `json:"i8,omitempty"`    //i8, ex:i8
-	Short *int16   `json:"i2,omitempty"`    //i2, ex:i2
+	Struct   []Member   `json:"struct,omitempty"`
+	Nil      *bool      `json:"nil,omitempty"`   //extension - nil, ex:nil
+	Byte     *byte      `json:"i1,omitempty"`    //extension - i1, ex:i1
+	Float    *float32   `json:"float,omitempty"` //extension - float, ex:float
+	Long     *int64     `json:"i8,omitempty"`    //extension - i8, ex:i8
+	Short    *int16     `json:"i2,omitempty"`    //extension - i2, ex:i2
 	//Dom - unsupported
 }
 
@@ -50,8 +56,11 @@ func NewDateTime(val time.Time) Value {
 func NewBase64(val string) Value {
 	return Value{Base64: &val}
 }
-func NewArray(val []Value) Value {
-	return Value{Array: val}
+func NewArray(values []Value) Value {
+	return Value{Array: values}
+}
+func NewStruct(members []Member) Value {
+	return Value{Struct: members}
 }
 func NewNil() Value {
 	b := true
@@ -85,6 +94,8 @@ func (v *Value) FromString(str string) {
 	} else if v.Base64 != nil {
 		v.Base64 = &str
 	} else if v.Array != nil {
+		//noop
+	} else if v.Struct != nil {
 		//noop
 	} else if v.Nil != nil {
 		//noop
@@ -126,7 +137,7 @@ func (v *Value) FromBoolean(b bool) {
 	}
 }
 
-func (v *Value) FromRpc(name string) {
+func (v *Value) FromRpc(name string) (err error) {
 	switch name {
 	case "int", "i4":
 		var val int32
@@ -148,6 +159,8 @@ func (v *Value) FromRpc(name string) {
 		v.Base64 = &val
 	case "array":
 		v.Array = make([]Value, 0)
+	case "struct":
+		v.Struct = make([]Member, 0)
 	case "none", "nil", "ex:nil":
 		var val bool = true
 		v.Nil = &val
@@ -163,7 +176,11 @@ func (v *Value) FromRpc(name string) {
 	case "short", "i2", "ex:i2":
 		var val int16 = 0
 		v.Short = &val
+	default:
+		return errors.New("Unhandled element: " + name)
 	}
+
+	return nil
 }
 
 func (v *Value) asString() (dataType string, text string) {
@@ -195,6 +212,8 @@ func (v *Value) asString() (dataType string, text string) {
 		return "ex:i2", strconv.FormatInt(int64(*v.Short), 10)
 	} else if v.Array != nil {
 		return "array", v.asStringArray(v.Array)
+	} else if v.Struct != nil {
+		return "struct", v.asStringStruct(v.Struct)
 	} else {
 		return "empty", ""
 	}
@@ -205,6 +224,20 @@ func (v *Value) asStringArray(values []Value) (text string) {
 
 	for i, val := range values {
 		parts[i] = val.Print()
+	}
+
+	return "[" + strings.Join(parts, ", ") + "]"
+}
+
+func (v *Value) asStringStruct(members []Member) (text string) {
+	parts := make([]string, len(members))
+
+	for i, mem := range members {
+		name := mem.Name
+		if name == "" {
+			name = "(empty)"
+		}
+		parts[i] = "{" + name + ": " + mem.Value.Print() + "}"
 	}
 
 	return "[" + strings.Join(parts, ", ") + "]"
@@ -225,6 +258,8 @@ func (v *Value) asXml(encoder *xml.Encoder) {
 		util.Empty(encoder, dataType)
 	case "array":
 		v.xmlArrayValue(encoder, v.Array)
+	case "struct":
+		v.xmlStructValue(encoder, v.Struct)
 	default:
 		v.xmlValue(encoder, dataType, text)
 	}
@@ -248,4 +283,17 @@ func (v *Value) xmlArrayValue(encoder *xml.Encoder, values []Value) {
 
 	util.End(encoder, "data")
 	util.End(encoder, "array")
+}
+
+func (v *Value) xmlStructValue(encoder *xml.Encoder, members []Member) {
+	util.Start(encoder, "struct")
+
+	for _, mem := range members {
+		util.Start(encoder, "name")
+		util.CharData(encoder, mem.Name)
+		util.End(encoder, "name")
+		mem.Value.asXml(encoder)
+	}
+
+	util.End(encoder, "struct")
 }

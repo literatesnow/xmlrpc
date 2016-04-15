@@ -22,19 +22,23 @@ func createCompareRequest(methodName string, params []Value, expected string, t 
 	}
 }
 
-func runParseXmlResponse(params []string, expecteds []Value, t *testing.T) {
-	if len(params) != len(expecteds) {
-		t.Fatalf("Expected params count %v, got %v", len(params), len(expecteds))
+func runParseXmlResponse(items []string, expecteds []Value, isParam bool, t *testing.T) {
+	if len(items) != len(expecteds) {
+		t.Fatalf("Expected items count %v, got %v", len(items), len(expecteds))
 	}
 
 	prefix := "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?><methodResponse><params>"
 	suffix := "\n</params></methodResponse>"
 
-	for i, param := range params {
+	for i, item := range items {
 		expected := expecteds[i]
 
 		xml := prefix
-		xml += "<param><value>" + param + "</value></param>"
+		if isParam {
+			xml += "<param><value>" + item + "</value></param>"
+		} else {
+			xml += item
+		}
 		xml += suffix
 
 		t.Logf("Expected (XML): %s", xml)
@@ -94,6 +98,21 @@ func runParseJsonRequest(params []string, expecteds []Value, t *testing.T) {
 	}
 }
 
+func compareMember(expected *Member, actual *Member, t *testing.T) {
+	if expected == nil {
+		t.Fatalf("Expected was nil")
+	}
+	if actual == nil {
+		t.Fatalf("Actual was nil")
+	}
+
+	if expected.Name != actual.Name {
+		t.Fatalf("Expecting name %s, got %s", expected.Name, actual.Name)
+	}
+
+	compareValue(&expected.Value, &actual.Value, t)
+}
+
 func compareValue(expected *Value, actual *Value, t *testing.T) {
 	if expected == nil {
 		t.Fatalf("Expected was nil")
@@ -102,13 +121,15 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		t.Fatalf("Actual was nil")
 	}
 
+	matched := false
+
 	if expected.Int != nil {
 		if actual.Int == nil {
 			t.Errorf("Expected %#v, got nil", *expected.Int)
 		} else if *expected.Int != *actual.Int {
 			t.Errorf("Expected %#v, got %#v", *expected.Int, *actual.Int)
 		}
-		return
+		matched = true
 	}
 
 	if expected.Boolean != nil {
@@ -117,7 +138,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.Boolean != *actual.Boolean {
 			t.Errorf("Expected %#v, got %#v", *expected.Boolean, *actual.Boolean)
 		}
-		return
+		matched = true
 	}
 
 	if expected.String != nil {
@@ -126,7 +147,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.String != *actual.String {
 			t.Errorf("Expected %#v, got %#v", *expected.String, *actual.String)
 		}
-		return
+		matched = true
 	}
 
 	if expected.Double != nil {
@@ -135,7 +156,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.Double != *actual.Double {
 			t.Errorf("Expected %#v, got %#v", *expected.Double, *actual.Double)
 		}
-		return
+		matched = true
 	}
 
 	if expected.DateTime != nil {
@@ -144,7 +165,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if !(*expected.DateTime).Equal(*actual.DateTime) {
 			t.Errorf("Expected %#v, got %#v", *expected.DateTime, *actual.DateTime)
 		}
-		return
+		matched = true
 	}
 
 	if expected.Base64 != nil {
@@ -153,7 +174,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.Base64 != *actual.Base64 {
 			t.Errorf("Expected %#v, got %#v", *expected.Base64, *actual.Base64)
 		}
-		return
+		matched = true
 	}
 
 	if expected.Array != nil {
@@ -166,7 +187,20 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 			compareValue(&expectedValue, &actualValue, t)
 		}
 
-		return
+		matched = true
+	}
+
+	if expected.Struct != nil {
+		if len(expected.Struct) != len(actual.Struct) {
+			t.Fatalf("Expected struct length %d, got %d", len(expected.Struct), len(actual.Struct))
+		}
+
+		for i, expectedMember := range expected.Struct {
+			actualMember := actual.Struct[i]
+			compareMember(&expectedMember, &actualMember, t)
+		}
+
+		matched = true
 	}
 
 	//Extensions
@@ -177,7 +211,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.Nil != *actual.Nil {
 			t.Errorf("Expected %#v, got %#v", *expected.Nil, *actual.Nil)
 		}
-		return
+		matched = true
 	}
 
 	if expected.Byte != nil {
@@ -186,7 +220,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.Byte != *actual.Byte {
 			t.Errorf("Expected %#v, got %#v", *expected.Byte, *actual.Byte)
 		}
-		return
+		matched = true
 	}
 
 	if expected.Float != nil {
@@ -195,7 +229,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.Float != *actual.Float {
 			t.Errorf("Expected %#v, got %#v", *expected.Float, *actual.Float)
 		}
-		return
+		matched = true
 	}
 
 	if expected.Long != nil {
@@ -204,7 +238,7 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.Long != *actual.Long {
 			t.Errorf("Expected %#v, got %#v", *expected.Long, *actual.Long)
 		}
-		return
+		matched = true
 	}
 
 	if expected.Short != nil {
@@ -213,10 +247,65 @@ func compareValue(expected *Value, actual *Value, t *testing.T) {
 		} else if *expected.Short != *actual.Short {
 			t.Errorf("Expected %#v, got %#v", *expected.Short, *actual.Short)
 		}
-		return
+		matched = true
 	}
 
-	t.Fatalf("Nothing matched while comparing\n")
+	if !matched {
+		t.Fatalf("Nothing matched while comparing\n")
+	}
+
+	//Check if multiple value types have been set
+	expectedScore := scoreValue(expected)
+	actualScore := scoreValue(actual)
+
+	if expectedScore != actualScore {
+		t.Fatalf("Expecting score of %d, got %d\n", expectedScore, actualScore)
+	}
+}
+
+func scoreValue(v *Value) (score int) {
+	score = 0
+	if v.Int != nil {
+		score |= 1
+	}
+	if v.Boolean != nil {
+		score |= 2
+	}
+	if v.String != nil {
+		score |= 4
+	}
+	if v.Double != nil {
+		score |= 8
+	}
+	if v.DateTime != nil {
+		score |= 16
+	}
+	if v.Base64 != nil {
+		score |= 32
+	}
+	if v.Array != nil {
+		score |= 64
+	}
+	if v.Struct != nil {
+		score |= 128
+	}
+	if v.Nil != nil {
+		score |= 256
+	}
+	if v.Byte != nil {
+		score |= 512
+	}
+	if v.Float != nil {
+		score |= 1024
+	}
+	if v.Long != nil {
+		score |= 2048
+	}
+	if v.Short != nil {
+		score |= 4096
+	}
+
+	return score
 }
 
 func printValue(value *Value) (str string) {
@@ -611,12 +700,16 @@ func shortValidData() (xmlDoc []string, values []Value) {
 
 func mixedArrayData() (xmlDoc []string, values []Value) {
 	return []string{`<array><data>
-              <value><int>485838</int></value>
+              <value>  <int>485838</int>   </value>
               <value><i4>58388</i4></value>
               <value><i8>-4829485744</i8></value>
               <value><boolean>1</boolean></value>
               <value><string>Hello World &amp; You!</string></value>
               <value>:) :D !:&lt; :&gt;</value>
+              <value><struct>
+                 <member>     <name>A mighty fine struct</name>
+                 <value>  <string>It sure is</string>    </value>
+                 </member>    </struct>    </value>
               </data></array>`},
 		[]Value{{Array: []Value{
 			NewInt(485838),
@@ -624,72 +717,94 @@ func mixedArrayData() (xmlDoc []string, values []Value) {
 			NewLong(-4829485744),
 			NewBoolean(true),
 			NewString("Hello World & You!"),
-			NewString(":) :D !:< :>")}}}
+			NewString(":) :D !:< :>"),
+			NewStruct([]Member{
+				{Name: "A mighty fine struct", Value: NewString("It sure is")}})}}}
+}
+
+func faultData() (xmlDoc []string, values []Value) {
+	return []string{
+			`<fault>
+      <value><struct>
+      <member><name>faultCode</name>
+      <value><i4>-506</i4></value></member>
+      <member><name>faultString</name>
+      <value><string>Method 'what' not defined</string></value></member>
+      </struct></value>
+    </fault>`},
+		[]Value{NewStruct([]Member{
+			{Name: "faultCode", Value: NewInt(-506)},
+			{Name: "faultString", Value: NewString("Method 'what' not defined")}})}
 }
 
 func TestIntegerParam(t *testing.T) {
 	xmlDoc, values := integerData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestBooleanParam(t *testing.T) {
 	xmlDoc, values := booleanData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestStringParam(t *testing.T) {
 	xmlDoc, values := stringData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestDoubleParam(t *testing.T) {
 	xmlDoc, values := doubleData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestDateTimeParam(t *testing.T) {
 	xmlDoc, values := dateTimeData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestBase64Param(t *testing.T) {
 	xmlDoc, values := base64Data()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestArrayParam(t *testing.T) {
 	xmlDoc, values := arrayData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestNilParam(t *testing.T) {
 	xmlDoc, values := nilData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestByteParam(t *testing.T) {
 	xmlDoc, values := byteData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestFloatParam(t *testing.T) {
 	xmlDoc, values := floatData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestLongParam(t *testing.T) {
 	xmlDoc, values := longData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestShortParam(t *testing.T) {
 	xmlDoc, values := shortData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
 }
 
 func TestMixedArrayParam(t *testing.T) {
 	xmlDoc, values := mixedArrayData()
-	runParseXmlResponse(xmlDoc, values, t)
+	runParseXmlResponse(xmlDoc, values, true, t)
+}
+
+func TestFault(t *testing.T) {
+	xmlDoc, values := faultData()
+	runParseXmlResponse(xmlDoc, values, false, t)
 }
 
 func TestCreateRequest(t *testing.T) {
