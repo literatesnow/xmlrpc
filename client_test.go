@@ -27,8 +27,8 @@ func runParseXmlResponse(items []string, expecteds []Value, isParam bool, t *tes
 		t.Fatalf("Expected items count %v, got %v", len(items), len(expecteds))
 	}
 
-	prefix := "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?><methodResponse><params>"
-	suffix := "\n</params></methodResponse>"
+	prefix := "\n<?xml version=\"1.0\" encoding=\"UTF-8\"?> <methodResponse> <params> "
+	suffix := "\n </params> </methodResponse>"
 
 	for i, item := range items {
 		expected := expecteds[i]
@@ -552,6 +552,48 @@ func arrayValidData() (xmlDoc []string, values []Value) {
 			NewLong(1294959993)}}}
 }
 
+func structData() (xmlDoc []string, values []Value) {
+	return []string{
+			`<value>  <struct>
+         <member> <name>1st item</name> <value><i4>-100</i4> </value> </member>
+         <member> <name>2nd item</name> <value><string>-200</string> </value> </member>
+         <member> <name>3rd item</name> <value><i8>-300</i8> </value> </member>
+         <member>
+           <name>4th Array</name>
+           <value>
+             <array>
+               <data>
+                 <value> <string>4th #1</string> </value>
+                 <value> <string>4th #2</string> </value>
+                 <value>
+                   <struct>
+                     <member>
+                       <name>4th #3 - #1</name>
+                       <value> <int>1000</int> </value>
+                     </member>
+                     <member>
+                       <name>4th #3 - #2</name>
+                       <value> <int>2000</int> </value>
+                     </member>
+                   </struct>
+                 </value>
+               </data>
+             </array>
+           </value>
+         </member>
+       </struct> </value> `},
+		[]Value{NewStruct([]Member{
+			{Name: "1st item", Value: NewInt(-100)},
+			{Name: "2nd item", Value: NewString("-200")},
+			{Name: "3rd item", Value: NewLong(-300)},
+      {Name: "4th Array", Value: NewArray([]Value{
+        NewString("4th #1"),
+        NewString("4th #2"),
+        NewStruct([]Member{
+          {Name: "4th #3 - #1", Value: NewInt(1000)},
+          {Name: "4th #3 - #2", Value: NewInt(2000)}})})}})}
+}
+
 func nilData() (xmlDoc []string, values []Value) {
 	return []string{
 			"<nil/>",
@@ -769,6 +811,11 @@ func TestBase64Param(t *testing.T) {
 
 func TestArrayParam(t *testing.T) {
 	xmlDoc, values := arrayData()
+	runParseXmlResponse(xmlDoc, values, true, t)
+}
+
+func TestStructParam(t *testing.T) {
+	xmlDoc, values := structData()
 	runParseXmlResponse(xmlDoc, values, true, t)
 }
 

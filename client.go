@@ -132,7 +132,7 @@ func parseStartElement(decoder *xml.Decoder, valuePtr **Value, elemName string) 
 	}
 
 	value := *valuePtr
-	value.String = nil
+	value.String = nil //Clear any white space if there's a type element
 
 	if err = value.FromRpc(elemName); err != nil {
 		return err
