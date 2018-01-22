@@ -586,12 +586,12 @@ func structData() (xmlDoc []string, values []Value) {
 			{Name: "1st item", Value: NewInt(-100)},
 			{Name: "2nd item", Value: NewString("-200")},
 			{Name: "3rd item", Value: NewLong(-300)},
-      {Name: "4th Array", Value: NewArray([]Value{
-        NewString("4th #1"),
-        NewString("4th #2"),
-        NewStruct([]Member{
-          {Name: "4th #3 - #1", Value: NewInt(1000)},
-          {Name: "4th #3 - #2", Value: NewInt(2000)}})})}})}
+			{Name: "4th Array", Value: NewArray([]Value{
+				NewString("4th #1"),
+				NewString("4th #2"),
+				NewStruct([]Member{
+					{Name: "4th #3 - #1", Value: NewInt(1000)},
+					{Name: "4th #3 - #2", Value: NewInt(2000)}})})}})}
 }
 
 func nilData() (xmlDoc []string, values []Value) {
