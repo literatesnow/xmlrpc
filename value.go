@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/unrulyknight/xmlrpc/util"
+	"github.com/literatesnow/xmlrpc/util"
 )
 
 const (
